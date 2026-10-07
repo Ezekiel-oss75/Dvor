@@ -1,0 +1,3885 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2d5016">
+<meta name="description" content="ДВОР — всё для жизни на своей земле">
+<title>ДВОР — хозяйство, дом, земля</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ============ ПЕРЕМЕННЫЕ ============ */
+:root{
+  --green-900:#1a3309;
+  --green-800:#2d5016;
+  --green-700:#3d6b1f;
+  --green-600:#4a8528;
+  --green-500:#5fa832;
+  --green-100:#e8f5dc;
+  --earth-900:#2b1810;
+  --earth-700:#5c3a21;
+  --earth-500:#8b5a2b;
+  --earth-300:#c9a97a;
+  --earth-100:#f5ede0;
+  --honey:#e8a33d;
+  --honey-light:#ffd77a;
+  --danger:#c62828;
+  --danger-light:#ff5252;
+  --warning:#f57c00;
+  --info:#1976d2;
+  --bg:#f5f2ea;
+  --bg-card:#ffffff;
+  --text:#1a1a1a;
+  --text-muted:#6b6b6b;
+  --border:#e0d8c8;
+  --shadow:0 2px 8px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.15);
+  --radius:14px;
+  --radius-sm:8px;
+  --safe-top:env(safe-area-inset-top,0);
+  --safe-bottom:env(safe-area-inset-bottom,0);
+}
+[data-theme="dark"]{
+  --bg:#15140f;
+  --bg-card:#221f18;
+  --text:#ece5d6;
+  --text-muted:#a89e88;
+  --border:#3a3428;
+  --earth-100:#1e1a12;
+  --green-100:#1c2a12;
+  --shadow:0 2px 8px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.6);
+}
+
+/* ============ СБРОС ============ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  font-size:16px;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--green-700);text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ============ ШАПКА ============ */
+.app-header{
+  position:fixed;top:0;left:0;right:0;
+  z-index:100;
+  background:linear-gradient(135deg,var(--green-800),var(--green-600));
+  color:#fff;
+  padding:calc(12px + var(--safe-top)) 16px 12px;
+  box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:12px;
+}
+.app-header .logo{
+  font-size:22px;font-weight:800;letter-spacing:1px;
+  display:flex;align-items:center;gap:8px;
+}
+.app-header .logo .emoji{font-size:26px}
+.header-actions{margin-left:auto;display:flex;gap:8px}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;background:rgba(255,255,255,.15);
+  transition:background .2s;
+}
+.icon-btn:active{background:rgba(255,255,255,.3)}
+
+/* ============ КОНТЕЙНЕР ============ */
+.app-main{
+  padding:calc(72px + var(--safe-top)) 16px calc(80px + var(--safe-bottom));
+  max-width:900px;margin:0 auto;
+  min-height:100vh;
+}
+
+/* ============ ЭКРАНЫ ============ */
+.screen{display:none;animation:fadeIn .25s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.screen-title{
+  font-size:24px;font-weight:800;margin-bottom:4px;
+  color:var(--green-800);display:flex;align-items:center;gap:10px;
+}
+[data-theme="dark"] .screen-title{color:var(--green-500)}
+.screen-subtitle{color:var(--text-muted);font-size:14px;margin-bottom:20px}
+
+/* ============ ГЛАВНОЕ МЕНЮ ============ */
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:12px;
+}
+.menu-card{
+  background:var(--bg-card);
+  border-radius:var(--radius);
+  padding:18px 14px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+  align-items:flex-start;gap:8px;
+  transition:transform .15s,box-shadow .15s;
+  border:1px solid var(--border);
+  text-align:left;
+  position:relative;
+  overflow:hidden;
+}
+.menu-card:active{transform:scale(.97);box-shadow:var(--shadow-lg)}
+.menu-card .icon{font-size:34px;line-height:1}
+.menu-card .label{font-weight:700;font-size:15px;color:var(--text)}
+.menu-card .desc{font-size:12px;color:var(--text-muted);line-height:1.3}
+.menu-card.danger{background:linear-gradient(135deg,#c62828,#e53935);color:#fff;border-color:#b71c1c}
+.menu-card.danger .label,.menu-card.danger .desc{color:#fff}
+.menu-card.danger .desc{opacity:.9}
+
+/* ============ КАРТОЧКИ / БЛОКИ ============ */
+.card{
+  background:var(--bg-card);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);border:1px solid var(--border);
+  margin-bottom:12px;
+}
+.card-title{font-size:17px;font-weight:700;margin-bottom:8px;color:var(--green-800)}
+[data-theme="dark"] .card-title{color:var(--green-500)}
+
+/* ============ ФОРМЫ ============ */
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-muted)}
+.field input,.field textarea,.field select{
+  width:100%;padding:11px 13px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--bg);
+  font-size:15px;transition:border-color .2s;
+}
+.field input:focus,.field textarea:focus,.field select:focus{
+  outline:none;border-color:var(--green-600);
+}
+.field textarea{resize:vertical;min-height:80px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 18px;border-radius:var(--radius-sm);
+  font-weight:600;font-size:15px;transition:transform .1s,background .2s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--green-700);color:#fff}
+.btn-primary:hover{background:var(--green-600)}
+.btn-secondary{background:var(--earth-100);color:var(--earth-900);border:1px solid var(--border)}
+[data-theme="dark"] .btn-secondary{color:var(--text)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-block{width:100%}
+.btn-sm{padding:7px 12px;font-size:13px}
+
+/* ============ СПИСКИ ============ */
+.list{display:flex;flex-direction:column;gap:8px}
+.list-item{
+  background:var(--bg-card);border-radius:var(--radius-sm);
+  padding:12px 14px;border:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+  transition:background .15s;
+}
+.list-item:active{background:var(--earth-100)}
+.list-item .li-icon{font-size:22px;flex-shrink:0}
+.list-item .li-body{flex:1;min-width:0}
+.list-item .li-title{font-weight:600;font-size:15px}
+.list-item .li-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.list-item .li-actions{display:flex;gap:6px}
+.li-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--earth-100)}
+[data-theme="dark"] .li-btn{background:var(--border)}
+
+/* ============ АККОРДЕОН ============ */
+.accordion{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:8px;background:var(--bg-card)}
+.accordion-head{
+  padding:13px 15px;font-weight:600;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  user-select:none;
+}
+.accordion-head .arrow{margin-left:auto;transition:transform .25s;font-size:12px}
+.accordion.open .accordion-head .arrow{transform:rotate(90deg)}
+.accordion-body{
+  max-height:0;overflow:hidden;transition:max-height .3s ease;
+  padding:0 15px;
+}
+.accordion.open .accordion-body{max-height:4000px;padding:0 15px 14px}
+.accordion-body p{margin-bottom:8px;font-size:14px}
+.accordion-body ul,.accordion-body ol{margin:8px 0 8px 20px;font-size:14px}
+.accordion-body li{margin-bottom:5px}
+
+/* ============ НИЖНЯЯ НАВИГАЦИЯ ============ */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--bg-card);border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;
+  padding:6px 0 calc(6px + var(--safe-bottom));
+  box-shadow:0 -2px 8px rgba(0,0,0,.05);
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 4px;color:var(--text-muted);font-size:11px;
+  transition:color .2s;
+}
+.nav-item.active{color:var(--green-700)}
+[data-theme="dark"] .nav-item.active{color:var(--green-500)}
+.nav-item .nav-icon{font-size:20px}
+.nav-item .nav-label{font-weight:600}
+
+/* ============ БЕЙДЖИ ============ */
+.badge{
+  display:inline-block;padding:3px 9px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:.3px;
+}
+.badge-green{background:var(--green-100);color:var(--green-800)}
+[data-theme="dark"] .badge-green{color:var(--green-500)}
+.badge-honey{background:#fff3d6;color:#8a5a00}
+.badge-danger{background:#ffebee;color:var(--danger)}
+.badge-info{background:#e3f2fd;color:var(--info)}
+
+/* ============ ПУСТОЕ СОСТОЯНИЕ ============ */
+.empty{
+  text-align:center;padding:40px 20px;color:var(--text-muted);
+}
+.empty .emoji{font-size:48px;display:block;margin-bottom:12px;opacity:.6}
+.empty p{font-size:14px}
+
+/* ============ ТОСТ ============ */
+.toast{
+  position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--earth-900);color:#fff;
+  padding:12px 20px;border-radius:30px;font-size:14px;font-weight:500;
+  z-index:1000;opacity:0;pointer-events:none;transition:.3s;
+  max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============ МОДАЛКА ============ */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+  display:none;align-items:flex-end;justify-content:center;
+}
+.modal-backdrop.show{display:flex;animation:fadeIn .2s}
+.modal{
+  background:var(--bg-card);width:100%;max-width:600px;
+  border-radius:20px 20px 0 0;padding:20px;
+  max-height:90vh;overflow-y:auto;
+  animation:slideUp .3s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.modal-head{display:flex;align-items:center;margin-bottom:16px}
+.modal-head h3{font-size:19px;font-weight:700;flex:1}
+.modal-close{width:36px;height:36px;border-radius:50%;background:var(--earth-100);display:flex;align-items:center;justify-content:center;font-size:18px}
+
+/* ============ ПРОЧЕЕ ============ */
+.row{display:flex;gap:8px}
+.row.wrap{flex-wrap:wrap}
+.row.between{justify-content:space-between;align-items:center}
+.grow{flex:1}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}
+.text-muted{color:var(--text-muted);font-size:13px}
+.text-sm{font-size:13px}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.chip{
+  display:inline-block;padding:5px 12px;border-radius:20px;
+  background:var(--earth-100);font-size:13px;font-weight:500;
+  border:1px solid var(--border);
+}
+[data-theme="dark"] .chip{background:var(--border)}
+.chip.active{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+
+/* Скелетон / загрузка */
+.loader{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--green-600);border-radius:50%;
+  animation:spin .8s linear infinite;margin:20px auto;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Экстренная кнопка */
+.sos-btn{
+  position:fixed;right:16px;bottom:calc(90px + var(--safe-bottom));
+  width:56px;height:56px;border-radius:50%;
+  background:var(--danger);color:#fff;font-size:26px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(198,40,40,.4);
+  z-index:90;transition:transform .15s;
+}
+.sos-btn:active{transform:scale(.9)}
+
+/* Печать */
+@media print{.app-header,.bottom-nav,.sos-btn{display:none}}
+</style>
+</head>
+<body>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 2 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 2: HTML-РАЗМЕТКА                         -->
+<!-- ============================================= -->
+
+<!-- ШАПКА -->
+<header class="app-header">
+  <div class="logo">
+    <span class="emoji">🌾</span>
+    <span>ДВОР</span>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="btn-search" title="Поиск">🔍</button>
+    <button class="icon-btn" id="btn-theme" title="Тема">🌙</button>
+    <button class="icon-btn" id="btn-menu" title="Меню">☰</button>
+  </div>
+</header>
+
+<!-- ОСНОВНОЙ КОНТЕЙНЕР -->
+<main class="app-main" id="app-main">
+
+  <!-- ========== ЭКРАН: ГЛАВНОЕ МЕНЮ ========== -->
+  <section class="screen active" id="screen-home">
+    <h1 class="screen-title">🌾 Двор</h1>
+    <p class="screen-subtitle">Всё для жизни на своей земле — офлайн</p>
+
+    <div class="menu-grid" id="home-menu">
+      <!-- Заполняется через JS -->
+    </div>
+
+    <div class="card mt-16">
+      <div class="card-title">📌 Быстрые действия</div>
+      <div class="row wrap">
+        <button class="btn btn-secondary btn-sm" data-quick="garden-add">+ Грядка</button>
+        <button class="btn btn-secondary btn-sm" data-quick="note-add">+ Заметка</button>
+        <button class="btn btn-secondary btn-sm" data-quick="task-add">+ Задача</button>
+        <button class="btn btn-secondary btn-sm" data-quick="weather">🌦 Погода</button>
+      </div>
+    </div>
+
+    <div class="card" id="home-weather-card">
+      <div class="card-title">🌦 Погода</div>
+      <div id="home-weather-body" class="text-muted">Нажми, чтобы загрузить прогноз</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✅ Задачи на сегодня</div>
+      <div id="home-tasks" class="list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ОГОРОД ========== -->
+  <section class="screen" id="screen-garden">
+    <h1 class="screen-title">🌱 Огород</h1>
+    <p class="screen-subtitle">Грядки, посадки, севооборот, урожай</p>
+
+    <div class="chips" id="garden-tabs">
+      <span class="chip active" data-tab="beds">Грядки</span>
+      <span class="chip" data-tab="plantings">Посадки</span>
+      <span class="chip" data-tab="harvest">Урожай</span>
+      <span class="chip" data-tab="calendar">Календарь</span>
+      <span class="chip" data-tab="pests">Болезни</span>
+    </div>
+
+    <div id="garden-content">
+      <div class="row between mb-12">
+        <span class="text-muted">Твои грядки</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-bed">+ Грядка</button>
+      </div>
+      <div class="list" id="garden-beds-list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ГРИБЫ ========== -->
+  <section class="screen" id="screen-mushrooms">
+    <h1 class="screen-title">🍄 Грибы</h1>
+    <p class="screen-subtitle">Сбор в лесу и выращивание дома</p>
+
+    <div class="chips" id="mushroom-tabs">
+      <span class="chip active" data-tab="wild">🌲 Сбор</span>
+      <span class="chip" data-tab="grow">🌱 Выращивание</span>
+      <span class="chip" data-tab="guide">📖 Сорта</span>
+      <span class="chip" data-tab="places">📍 Места</span>
+    </div>
+
+    <div id="mushroom-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: ПАСЕКА ========== -->
+  <section class="screen" id="screen-bees">
+    <h1 class="screen-title">🐝 Пасека</h1>
+    <p class="screen-subtitle">Ульи, осмотры, медосбор, болезни</p>
+
+    <div class="chips" id="bee-tabs">
+      <span class="chip active" data-tab="hives">Ульи</span>
+      <span class="chip" data-tab="inspections">Осмотры</span>
+      <span class="chip" data-tab="honey">Мёд</span>
+      <span class="chip" data-tab="diseases">Болезни</span>
+      <span class="chip" data-tab="calendar">Календарь</span>
+    </div>
+
+    <div id="bee-content">
+      <div class="row between mb-12">
+        <span class="text-muted">Твои ульи</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-hive">+ Улей</button>
+      </div>
+      <div class="list" id="bee-hives-list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ЖИВНОСТЬ ========== -->
+  <section class="screen" id="screen-livestock">
+    <h1 class="screen-title">🐔 Живность</h1>
+    <p class="screen-subtitle">Птица, скот, кролики, рыба</p>
+
+    <div class="chips" id="live-tabs">
+      <span class="chip active" data-tab="animals">Животные</span>
+      <span class="chip" data-tab="feed">Корма</span>
+      <span class="chip" data-tab="vet">Ветеринария</span>
+      <span class="chip" data-tab="products">Продукция</span>
+    </div>
+
+    <div id="live-content">
+      <div class="row between mb-12">
+        <span class="text-muted">Твоё поголовье</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-animal">+ Добавить</button>
+      </div>
+      <div class="list" id="live-animals-list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ДОМ И СТРОЙКА ========== -->
+  <section class="screen" id="screen-build">
+    <h1 class="screen-title">🏠 Дом и стройка</h1>
+    <p class="screen-subtitle">Фундамент, стены, крыша, печи, бани</p>
+
+    <div class="chips" id="build-tabs">
+      <span class="chip active" data-tab="projects">Мои объекты</span>
+      <span class="chip" data-tab="foundation">Фундамент</span>
+      <span class="chip" data-tab="walls">Стены</span>
+      <span class="chip" data-tab="roof">Крыша</span>
+      <span class="chip" data-tab="stove">Печи</span>
+      <span class="chip" data-tab="bath">Баня</span>
+      <span class="chip" data-tab="calc">Калькуляторы</span>
+    </div>
+
+    <div id="build-content">
+      <div class="row between mb-12">
+        <span class="text-muted">Мои проекты</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-project">+ Объект</button>
+      </div>
+      <div class="list" id="build-projects-list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ИНЖЕНЕРИЯ ========== -->
+  <section class="screen" id="screen-eng">
+    <h1 class="screen-title">⚡ Инженерия</h1>
+    <p class="screen-subtitle">Электрика, вода, отопление, канализация</p>
+
+    <div class="chips" id="eng-tabs">
+      <span class="chip active" data-tab="electric">⚡ Электрика</span>
+      <span class="chip" data-tab="water">💧 Вода</span>
+      <span class="chip" data-tab="heat">🔥 Отопление</span>
+      <span class="chip" data-tab="sewer">🚽 Канализация</span>
+      <span class="chip" data-tab="net">📡 Связь</span>
+      <span class="chip" data-tab="calc">🧮 Расчёты</span>
+    </div>
+
+    <div id="eng-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: ДОБЫЧА ========== -->
+  <section class="screen" id="screen-resources">
+    <h1 class="screen-title">⛏ Добыча ресурсов</h1>
+    <p class="screen-subtitle">Лес, вода, камень, глина, дикоросы</p>
+
+    <div class="chips" id="res-tabs">
+      <span class="chip active" data-tab="wood">🪵 Лес и дрова</span>
+      <span class="chip" data-tab="water">💧 Вода</span>
+      <span class="chip" data-tab="stone">🪨 Камень</span>
+      <span class="chip" data-tab="clay">🧱 Глина/торф</span>
+      <span class="chip" data-tab="wild">🌿 Дикоросы</span>
+      <span class="chip" data-tab="hunt">🎣 Охота/рыбалка</span>
+    </div>
+
+    <div id="res-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: РЕМЕСЛО ========== -->
+  <section class="screen" id="screen-crafts">
+    <h1 class="screen-title">🔨 Ремесло</h1>
+    <p class="screen-subtitle">Столярка, кузня, сыроварение, копчение</p>
+
+    <div class="chips" id="craft-tabs">
+      <span class="chip active" data-tab="wood">🪚 Столярка</span>
+      <span class="chip" data-tab="metal">🔨 Кузня</span>
+      <span class="chip" data-tab="food">🧀 Сыры/колбасы</span>
+      <span class="chip" data-tab="drinks">🍺 Напитки</span>
+      <span class="chip" data-tab="soap">🧼 Мыло/свечи</span>
+    </div>
+
+    <div id="craft-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: ЭКОНОМИКА ========== -->
+  <section class="screen" id="screen-economy">
+    <h1 class="screen-title">📊 Экономика</h1>
+    <p class="screen-subtitle">Доходы, расходы, склад, себестоимость</p>
+
+    <div class="chips" id="eco-tabs">
+      <span class="chip active" data-tab="overview">Обзор</span>
+      <span class="chip" data-tab="income">Доходы</span>
+      <span class="chip" data-tab="expense">Расходы</span>
+      <span class="chip" data-tab="stock">Склад</span>
+      <span class="chip" data-tab="cost">Себестоимость</span>
+    </div>
+
+    <div id="eco-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: КАРТА ========== -->
+  <section class="screen" id="screen-map">
+    <h1 class="screen-title">🗺 Карта</h1>
+    <p class="screen-subtitle">Участок, угодья, грибные и ягодные места</p>
+    <div class="card">
+      <div class="row between mb-12">
+        <span class="text-muted">Метки на карте</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-mark">+ Метка</button>
+      </div>
+      <div id="map-view" style="height:300px;background:var(--earth-100);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+        Карта загружается…
+      </div>
+      <div class="list mt-12" id="map-marks-list"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ЭКСТРЕННЫЙ РЕЖИМ ========== -->
+  <section class="screen" id="screen-emergency">
+    <h1 class="screen-title" style="color:var(--danger)">🔥 Экстренный режим</h1>
+    <p class="screen-subtitle">Работает офлайн. Первая помощь, ЧС, выживание</p>
+
+    <div class="chips" id="sos-tabs">
+      <span class="chip active" data-tab="fire">🔥 Пожар</span>
+      <span class="chip" data-tab="power">💡 Нет света</span>
+      <span class="chip" data-tab="flood">🌊 Паводок</span>
+      <span class="chip" data-tab="injury">🩹 Травмы</span>
+      <span class="chip" data-tab="bite">🐍 Укусы</span>
+      <span class="chip" data-tab="poison">☠ Отравления</span>
+      <span class="chip" data-tab="lost">🧭 Заблудился</span>
+      <span class="chip" data-tab="evac">🎒 Эвакуация</span>
+    </div>
+
+    <div id="sos-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: БАЗА ЗНАНИЙ ========== -->
+  <section class="screen" id="screen-knowledge">
+    <h1 class="screen-title">💡 База знаний</h1>
+    <p class="screen-subtitle">Лайфхаки, рецепты, приметы, законы</p>
+
+    <div class="chips" id="know-tabs">
+      <span class="chip active" data-tab="lifehack">💡 Лайфхаки</span>
+      <span class="chip" data-tab="recipe">🍲 Рецепты</span>
+      <span class="chip" data-tab="folk">🌾 Народное</span>
+      <span class="chip" data-tab="medicine">🌿 Медицина</span>
+      <span class="chip" data-tab="law">⚖ Законы</span>
+    </div>
+
+    <div id="know-content"></div>
+  </section>
+
+  <!-- ========== ЭКРАН: ПОГОДА ========== -->
+  <section class="screen" id="screen-weather">
+    <h1 class="screen-title">🌦 Погода</h1>
+    <p class="screen-subtitle">Прогноз, фенология, лунный календарь</p>
+    <div class="card" id="weather-card">
+      <div id="weather-body"><div class="loader"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌙 Лунный календарь</div>
+      <div id="moon-body" class="text-muted">Загрузка…</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌱 Фенология</div>
+      <div class="accordion">
+        <div class="accordion-head">🌳 Народные приметы <span class="arrow">▶</span></div>
+        <div class="accordion-body">
+          <ul>
+            <li>Черёмуха зацвела — сажай картошку</li>
+            <li>Берёза распустилась — пора сеять овёс</li>
+            <li>Зацвела рябина — заморозков больше не будет</li>
+            <li>Дуб развернулся — сажай теплолюбивые</li>
+            <li>Ольха зацвела — готовься к посевной</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: КАЛЕНДАРЬ ========== -->
+  <section class="screen" id="screen-calendar">
+    <h1 class="screen-title">📅 Календарь</h1>
+    <p class="screen-subtitle">Сезонные работы, задачи, напоминания</p>
+
+    <div class="card">
+      <div class="card-title">Сезонные работы</div>
+      <div class="chips">
+        <span class="chip active" data-season="spring">🌸 Весна</span>
+        <span class="chip" data-season="summer">☀ Лето</span>
+        <span class="chip" data-season="autumn">🍂 Осень</span>
+        <span class="chip" data-season="winter">❄ Зима</span>
+      </div>
+      <div id="calendar-body"></div>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: НАСТРОЙКИ ========== -->
+  <section class="screen" id="screen-settings">
+    <h1 class="screen-title">⚙ Настройки</h1>
+    <p class="screen-subtitle">Регион, тема, данные, экспорт</p>
+
+    <div class="card">
+      <div class="card-title">🌍 Регион</div>
+      <div class="field">
+        <label>Регион (для календаря и погоды)</label>
+        <select id="set-region">
+          <option value="moscow">Московская область</option>
+          <option value="spb">Ленинградская область</option>
+          <option value="siberia">Сибирь</option>
+          <option value="ural">Урал</option>
+          <option value="south">Юг России</option>
+          <option value="north">Север</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Город для погоды (латиницей)</label>
+        <input type="text" id="set-city" placeholder="например: Moscow">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎨 Внешний вид</div>
+      <div class="row">
+        <button class="btn btn-secondary grow" id="set-theme-light">☀ Светлая</button>
+        <button class="btn btn-secondary grow" id="set-theme-dark">🌙 Тёмная</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💾 Данные</div>
+      <div class="row wrap">
+        <button class="btn btn-secondary btn-sm" id="btn-export">📤 Экспорт</button>
+        <button class="btn btn-secondary btn-sm" id="btn-import">📥 Импорт</button>
+        <button class="btn btn-danger btn-sm" id="btn-reset">🗑 Сброс</button>
+      </div>
+      <p class="text-muted mt-8">Все данные хранятся только на устройстве</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">ℹ О приложении</div>
+      <p class="text-sm">ДВОР v1.0 — офлайн-помощник для жизни на своей земле.</p>
+      <p class="text-sm mt-8 text-muted">Работает без интернета. Данные не покидают устройство.</p>
+    </div>
+  </section>
+
+  <!-- ========== ЭКРАН: ПОИСК ========== -->
+  <section class="screen" id="screen-search">
+    <h1 class="screen-title">🔍 Поиск</h1>
+    <div class="field">
+      <input type="text" id="search-input" placeholder="Что искать? Грядка, улей, рецепт…">
+    </div>
+    <div id="search-results" class="list"></div>
+  </section>
+
+</main>
+
+<!-- КНОПКА SOS -->
+<button class="sos-btn" id="sos-btn" title="Экстренно">🆘</button>
+
+<!-- НИЖНЯЯ НАВИГАЦИЯ -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-screen="home">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">Главная</span>
+  </button>
+  <button class="nav-item" data-screen="garden">
+    <span class="nav-icon">🌱</span>
+    <span class="nav-label">Огород</span>
+  </button>
+  <button class="nav-item" data-screen="bees">
+    <span class="nav-icon">🐝</span>
+    <span class="nav-label">Пасека</span>
+  </button>
+  <button class="nav-item" data-screen="emergency">
+    <span class="nav-icon">🔥</span>
+    <span class="nav-label">SOS</span>
+  </button>
+  <button class="nav-item" data-screen="settings">
+    <span class="nav-icon">⚙</span>
+    <span class="nav-label">Ещё</span>
+  </button>
+</nav>
+
+<!-- МОДАЛЬНОЕ ОКНО -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Заголовок</h3>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ТОСТ -->
+<div class="toast" id="toast"></div>
+
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 3 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 3: JS-ЯДРО                               -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. УТИЛИТЫ
+   =================================================== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+const Utils = {
+  uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  },
+  todayISO() {
+    return new Date().toISOString().slice(0, 10);
+  },
+  fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString("ru-RU", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    });
+  },
+  fmtDateTime(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit", month: "2-digit", year: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    });
+  },
+  daysBetween(a, b) {
+    const d1 = new Date(a), d2 = new Date(b);
+    return Math.round((d2 - d1) / 86400000);
+  },
+  escape(str) {
+    if (str == null) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  },
+  debounce(fn, ms = 300) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+};
+
+/* ===================================================
+   2. ХРАНИЛИЩЕ (localStorage с обёрткой)
+   =================================================== */
+const Store = {
+  prefix: "dvor_",
+  get(key, fallback = null) {
+    try {
+      const raw = localStorage.getItem(this.prefix + key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn("Store.get error", key, e);
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(this.prefix + key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.warn("Store.set error", key, e);
+      Toast.show("Ошибка сохранения (переполнено?)");
+      return false;
+    }
+  },
+  del(key) {
+    localStorage.removeItem(this.prefix + key);
+  },
+  all() {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(this.prefix)) {
+        try { out[k.slice(this.prefix.length)] = JSON.parse(localStorage.getItem(k)); }
+        catch (_) {}
+      }
+    }
+    return out;
+  },
+  clearAll() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(this.prefix)) keys.push(k);
+    }
+    keys.forEach(k => localStorage.removeItem(k));
+  }
+};
+
+/* ===================================================
+   3. ТОСТ
+   =================================================== */
+const Toast = {
+  el: null,
+  timer: null,
+  init() { this.el = $("#toast"); },
+  show(msg, ms = 2200) {
+    if (!this.el) this.el = $("#toast");
+    if (!this.el) return;
+    this.el.textContent = msg;
+    this.el.classList.add("show");
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.el.classList.remove("show"), ms);
+  }
+};
+
+/* ===================================================
+   4. МОДАЛКА
+   =================================================== */
+const Modal = {
+  backdrop: null, titleEl: null, bodyEl: null, closeBtn: null,
+  init() {
+    this.backdrop = $("#modal-backdrop");
+    this.titleEl = $("#modal-title");
+    this.bodyEl = $("#modal-body");
+    this.closeBtn = $("#modal-close");
+    this.closeBtn.addEventListener("click", () => this.close());
+    this.backdrop.addEventListener("click", (e) => {
+      if (e.target === this.backdrop) this.close();
+    });
+  },
+  open(title, html, onMount) {
+    this.titleEl.textContent = title;
+    this.bodyEl.innerHTML = html;
+    this.backdrop.classList.add("show");
+    document.body.style.overflow = "hidden";
+    if (typeof onMount === "function") onMount(this.bodyEl);
+  },
+  close() {
+    this.backdrop.classList.remove("show");
+    document.body.style.overflow = "";
+    this.bodyEl.innerHTML = "";
+  }
+};
+
+/* ===================================================
+   5. ТЕМА
+   =================================================== */
+const Theme = {
+  init() {
+    const saved = Store.get("theme", "light");
+    this.apply(saved);
+    const btn = $("#btn-theme");
+    if (btn) btn.addEventListener("click", () => this.toggle());
+  },
+  apply(mode) {
+    document.documentElement.setAttribute("data-theme", mode);
+    Store.set("theme", mode);
+    const btn = $("#btn-theme");
+    if (btn) btn.textContent = mode === "dark" ? "☀" : "🌙";
+  },
+  toggle() {
+    const cur = document.documentElement.getAttribute("data-theme") || "light";
+    this.apply(cur === "dark" ? "light" : "dark");
+  }
+};
+
+/* ===================================================
+   6. РОУТЕР (экраны)
+   =================================================== */
+const Router = {
+  current: "home",
+  init() {
+    $$(".nav-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const s = btn.dataset.screen;
+        if (s === "settings") this.go("settings");
+        else this.go(s);
+      });
+    });
+    $$(".menu-card[data-screen]").forEach(card => {
+      card.addEventListener("click", () => this.go(card.dataset.screen));
+    });
+    window.addEventListener("hashchange", () => {
+      const h = location.hash.slice(1);
+      if (h && h !== this.current) this.go(h, false);
+    });
+    const h = location.hash.slice(1);
+    if (h) this.go(h, false);
+  },
+  go(screen, updateHash = true) {
+    const target = $("#screen-" + screen);
+    if (!target) {
+      Toast.show("Раздел в разработке");
+      return;
+    }
+    $$(".screen").forEach(s => s.classList.remove("active"));
+    target.classList.add("active");
+    this.current = screen;
+    if (updateHash) location.hash = screen;
+    window.scrollTo({ top: 0, behavior: "instant" });
+
+    // Подсветка нижнего меню
+    $$(".nav-item").forEach(b => {
+      b.classList.toggle("active", b.dataset.screen === screen);
+    });
+
+    // Ленивая инициализация экранов
+    if (typeof ScreenHooks !== "undefined" && ScreenHooks[screen]) {
+      try { ScreenHooks[screen](); } catch (e) { console.warn(e); }
+    }
+  }
+};
+
+/* ===================================================
+   7. ГЛАВНОЕ МЕНЮ (карточки)
+   =================================================== */
+const HomeMenu = {
+  items: [
+    { screen: "garden",   icon: "🌱", label: "Огород",    desc: "Грядки, посадки, урожай" },
+    { screen: "mushrooms",icon: "🍄", label: "Грибы",     desc: "Сбор и выращивание" },
+    { screen: "bees",     icon: "🐝", label: "Пасека",    desc: "Ульи, мёд, осмотры" },
+    { screen: "livestock",icon: "🐔", label: "Живность",  desc: "Птица, скот, кролики" },
+    { screen: "build",    icon: "🏠", label: "Стройка",   desc: "Дом, баня, печи" },
+    { screen: "eng",      icon: "⚡", label: "Инженерия", desc: "Электрика, вода, тепло" },
+    { screen: "resources",icon: "⛏", label: "Добыча",    desc: "Лес, вода, камень" },
+    { screen: "crafts",   icon: "🔨", label: "Ремесло",   desc: "Столярка, сыры, свечи" },
+    { screen: "economy",  icon: "📊", label: "Экономика", desc: "Доходы, склад, учёт" },
+    { screen: "map",      icon: "🗺", label: "Карта",     desc: "Участок и угодья" },
+    { screen: "weather",  icon: "🌦", label: "Погода",    desc: "Прогноз и фенология" },
+    { screen: "calendar", icon: "📅", label: "Календарь", desc: "Сезонные работы" },
+    { screen: "knowledge",icon: "💡", label: "Знания",    desc: "Лайфхаки и рецепты" },
+    { screen: "emergency",icon: "🔥", label: "Экстренно", desc: "SOS, выживание", danger: true }
+  ],
+  render() {
+    const wrap = $("#home-menu");
+    if (!wrap) return;
+    wrap.innerHTML = this.items.map(it => `
+      <button class="menu-card ${it.danger ? "danger" : ""}" data-screen="${it.screen}">
+        <span class="icon">${it.icon}</span>
+        <span class="label">${Utils.escape(it.label)}</span>
+        <span class="desc">${Utils.escape(it.desc)}</span>
+      </button>
+    `).join("");
+    $$(".menu-card[data-screen]", wrap).forEach(card => {
+      card.addEventListener("click", () => Router.go(card.dataset.screen));
+    });
+  }
+};
+
+/* ===================================================
+   8. ГЛАВНЫЙ ЭКРАН — задачи, погода-заглушка
+   =================================================== */
+const Home = {
+  render() {
+    this.renderTasks();
+    this.renderWeather();
+  },
+  renderTasks() {
+    const wrap = $("#home-tasks");
+    if (!wrap) return;
+    const tasks = Store.get("tasks", []);
+    const today = Utils.todayISO();
+    const todayTasks = tasks.filter(t => !t.done && t.date <= today);
+    if (!todayTasks.length) {
+      wrap.innerHTML = `<div class="empty"><span class="emoji">✅</span><p>Задач на сегодня нет</p></div>`;
+      return;
+    }
+    wrap.innerHTML = todayTasks.slice(0, 8).map(t => `
+      <div class="list-item" data-task="${t.id}">
+        <span class="li-icon">${t.icon || "📌"}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(t.title)}</div>
+          <div class="li-sub">${Utils.fmtDate(t.date)}${t.time ? " · " + t.time : ""}</div>
+        </div>
+        <div class="li-actions">
+          <button class="li-btn" data-done="${t.id}" title="Готово">✓</button>
+        </div>
+      </div>
+    `).join("");
+    $$("[data-done]", wrap).forEach(btn => {
+      btn.addEventListener("click", () => {
+        const list = Store.get("tasks", []);
+        const idx = list.findIndex(x => x.id === btn.dataset.done);
+        if (idx >= 0) { list[idx].done = true; Store.set("tasks", list); this.render(); }
+      });
+    });
+  },
+  renderWeather() {
+    const body = $("#home-weather-body");
+    if (!body) return;
+    const cached = Store.get("weather_cache", null);
+    if (cached && Date.now() - cached.ts < 3600000) {
+      body.innerHTML = this.weatherHTML(cached.data);
+      return;
+    }
+    body.innerHTML = `<span class="text-muted">Нажми «Загрузить», чтобы получить прогноз</span>
+      <div class="mt-8"><button class="btn btn-primary btn-sm" id="home-load-weather">Загрузить</button></div>`;
+    const btn = $("#home-load-weather");
+    if (btn) btn.addEventListener("click", () => Weather.fetchAndRender("#home-weather-body"));
+  },
+  weatherHTML(d) {
+    if (!d || !d.current) return `<span class="text-muted">Нет данных</span>`;
+    const c = d.current;
+    return `
+      <div class="row between">
+        <div>
+          <div style="font-size:32px;font-weight:800">${Math.round(c.temp)}°C</div>
+          <div class="text-muted">${Utils.escape(c.desc || "")}</div>
+        </div>
+        <div style="font-size:52px">${c.icon || "🌤"}</div>
+      </div>
+      <div class="text-sm mt-8">Ветер: ${c.wind} м/с · Влажность: ${c.humidity}%</div>
+    `;
+  }
+};
+
+/* ===================================================
+   9. ЭКРАННЫЕ ХУКИ (ленивая инициализация)
+   =================================================== */
+const ScreenHooks = {
+  home: () => Home.render(),
+  garden: () => window.Garden && Garden.render && Garden.render(),
+  mushrooms: () => window.Mushrooms && Mushrooms.render && Mushrooms.render(),
+  bees: () => window.Bees && Bees.render && Bees.render(),
+  livestock: () => window.Livestock && Livestock.render && Livestock.render(),
+  build: () => window.Build && Build.render && Build.render(),
+  eng: () => window.Engineering && Engineering.render && Engineering.render(),
+  resources: () => window.Resources && Resources.render && Resources.render(),
+  crafts: () => window.Crafts && Crafts.render && Crafts.render(),
+  economy: () => window.Economy && Economy.render && Economy.render(),
+  map: () => window.MapScreen && MapScreen.render && MapScreen.render(),
+  emergency: () => window.Emergency && Emergency.render && Emergency.render(),
+  knowledge: () => window.Knowledge && Knowledge.render && Knowledge.render(),
+  weather: () => window.Weather && Weather.renderScreen && Weather.renderScreen(),
+  calendar: () => window.CalendarScreen && CalendarScreen.render && CalendarScreen.render(),
+  settings: () => window.SettingsScreen && SettingsScreen.render && SettingsScreen.render(),
+  search: () => window.SearchScreen && SearchScreen.focus && SearchScreen.focus()
+};
+
+/* ===================================================
+   10. ОБЩИЕ КОМПОНЕНТЫ (чипсы-табы, аккордеоны)
+   =================================================== */
+function bindChips(containerId, onChange) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    const tab = chip.dataset.tab || chip.dataset.season;
+    if (onChange) onChange(tab);
+  });
+}
+
+function bindAccordions(root = document) {
+  $$(".accordion", root).forEach(acc => {
+    const head = $(".accordion-head", acc);
+    if (!head || head.dataset.bound) return;
+    head.dataset.bound = "1";
+    head.addEventListener("click", () => acc.classList.toggle("open"));
+  });
+}
+
+function renderList(containerId, items, renderFn) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  if (!items || !items.length) {
+    wrap.innerHTML = `<div class="empty"><span class="emoji">📭</span><p>Пока пусто</p></div>`;
+    return;
+  }
+  wrap.innerHTML = items.map(renderFn).join("");
+}
+
+/* ===================================================
+   11. ЗАПУСК
+   =================================================== */
+function AppInit() {
+  Toast.init();
+  Modal.init();
+  Theme.init();
+  HomeMenu.render();
+  Router.init();
+  Home.render();
+
+  // Кнопка поиска
+  const bs = $("#btn-search");
+  if (bs) bs.addEventListener("click", () => Router.go("search"));
+
+  // Кнопка "бургер" — быстрое меню
+  const bm = $("#btn-menu");
+  if (bm) bm.addEventListener("click", () => Router.go("settings"));
+
+  // SOS
+  const sos = $("#sos-btn");
+  if (sos) sos.addEventListener("click", () => Router.go("emergency"));
+
+  // Быстрые действия
+  $$("[data-quick]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const q = btn.dataset.quick;
+      if (q === "garden-add" && window.Garden) { Router.go("garden"); setTimeout(() => Garden.openAddBed(), 150); }
+      else if (q === "note-add") { Toast.show("Заметки — в разработке"); }
+      else if (q === "task-add") { Toast.show("Задачи — в разработке"); }
+      else if (q === "weather") { Router.go("weather"); }
+    });
+  });
+
+  // Регистрация service worker (создадим в Части 9)
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  }
+
+  console.log("🌾 ДВОР запущен");
+}
+
+document.addEventListener("DOMContentLoaded", AppInit);
+</script>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 4 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 4: ПОГОДА, ЛУНА, КАРТА, КАЛЕНДАРЬ       -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. ПОГОДА (Open-Meteo, без ключа)
+   =================================================== */
+const Weather = {
+  cacheKey: "weather_cache",
+
+  weatherCodeInfo(code) {
+    const map = {
+      0:  { d: "Ясно",           i: "☀" },
+      1:  { d: "Преимущ. ясно",  i: "🌤" },
+      2:  { d: "Переменная обл.",i: "⛅" },
+      3:  { d: "Пасмурно",       i: "☁" },
+      45: { d: "Туман",          i: "🌫" },
+      48: { d: "Изморозь",       i: "🌫" },
+      51: { d: "Морось слабая",  i: "🌦" },
+      53: { d: "Морось",         i: "🌦" },
+      55: { d: "Морось сильная", i: "🌧" },
+      61: { d: "Дождь слабый",   i: "🌦" },
+      63: { d: "Дождь",          i: "🌧" },
+      65: { d: "Дождь сильный",  i: "🌧" },
+      66: { d: "Лед. дождь",     i: "🌧" },
+      67: { d: "Лед. дождь сильн.", i: "🌧" },
+      71: { d: "Снег слабый",    i: "🌨" },
+      73: { d: "Снег",           i: "❄" },
+      75: { d: "Снег сильный",   i: "❄" },
+      77: { d: "Крупа",          i: "🌨" },
+      80: { d: "Ливень слабый",  i: "🌦" },
+      81: { d: "Ливень",         i: "🌧" },
+      82: { d: "Ливень сильный", i: "⛈" },
+      85: { d: "Снегопад",       i: "🌨" },
+      86: { d: "Снегопад сильн.",i: "❄" },
+      95: { d: "Гроза",          i: "⛈" },
+      96: { d: "Гроза с градом", i: "⛈" },
+      99: { d: "Гроза сильная",  i: "⛈" }
+    };
+    return map[code] || { d: "—", i: "🌡" };
+  },
+
+  async geocode(city) {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ru&format=json`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("geocode fail");
+    const j = await r.json();
+    if (!j.results || !j.results.length) throw new Error("Город не найден");
+    const g = j.results[0];
+    return { lat: g.latitude, lon: g.longitude, name: g.name };
+  },
+
+  async fetch(city) {
+    if (!city) city = Store.get("city", "Moscow");
+    const geo = await this.geocode(city);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}` +
+      `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max` +
+      `&timezone=auto&forecast_days=5`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("weather fail");
+    const j = await r.json();
+
+    const cur = j.current || {};
+    const info = this.weatherCodeInfo(cur.weather_code);
+    const data = {
+      city: geo.name,
+      current: {
+        temp: cur.temperature_2m,
+        wind: cur.wind_speed_10m,
+        humidity: cur.relative_humidity_2m,
+        desc: info.d,
+        icon: info.i
+      },
+      daily: (j.daily?.time || []).map((t, i) => {
+        const inf = this.weatherCodeInfo(j.daily.weather_code[i]);
+        return {
+          date: t,
+          tmax: j.daily.temperature_2m_max[i],
+          tmin: j.daily.temperature_2m_min[i],
+          rain: j.daily.precipitation_sum[i],
+          wind: j.daily.wind_speed_10m_max[i],
+          desc: inf.d,
+          icon: inf.i
+        };
+      })
+    };
+    Store.set(this.cacheKey, { ts: Date.now(), data });
+    return data;
+  },
+
+  async fetchAndRender(targetSel) {
+    const el = document.querySelector(targetSel);
+    if (!el) return;
+    el.innerHTML = `<div class="loader"></div>`;
+    try {
+      const data = await this.fetch();
+      el.innerHTML = this.renderFull(data);
+    } catch (e) {
+      el.innerHTML = `<div class="text-muted">Не удалось загрузить погоду. Проверь интернет.</div>
+        <button class="btn btn-secondary btn-sm mt-8" onclick="Weather.fetchAndRender('${targetSel}')">Повторить</button>`;
+    }
+  },
+
+  renderFull(d) {
+    if (!d) return `<div class="text-muted">Нет данных</div>`;
+    const c = d.current;
+    const daily = d.daily.map(day => `
+      <div class="list-item">
+        <span class="li-icon">${day.icon}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.fmtDate(day.date)}</div>
+          <div class="li-sub">${Utils.escape(day.desc)} · 💧${day.rain ?? 0}мм · 💨${day.wind ?? 0}м/с</div>
+        </div>
+        <div style="text-align:right;font-weight:700">
+          ${Math.round(day.tmax)}° <span class="text-muted" style="font-weight:400">/ ${Math.round(day.tmin)}°</span>
+        </div>
+      </div>
+    `).join("");
+
+    return `
+      <div class="row between">
+        <div>
+          <div style="font-size:36px;font-weight:800">${Math.round(c.temp)}°C</div>
+          <div class="text-muted">${Utils.escape(d.city)} · ${Utils.escape(c.desc)}</div>
+          <div class="text-sm mt-8">💨 ${c.wind} м/с · 💧 ${c.humidity}%</div>
+        </div>
+        <div style="font-size:64px">${c.icon}</div>
+      </div>
+      <div class="divider"></div>
+      <div class="list">${daily}</div>
+    `;
+  },
+
+  renderScreen() {
+    this.fetchAndRender("#weather-body");
+    Moon.render("#moon-body");
+  }
+};
+
+/* ===================================================
+   2. ЛУННЫЙ КАЛЕНДАРЬ (упрощённый расчёт фазы)
+   =================================================== */
+const Moon = {
+  SYNODIC: 29.530588853,
+  KNOWN_NEW_MOON: new Date("2000-01-06T18:14:00Z").getTime(),
+
+  phase(date = new Date()) {
+    const days = (date.getTime() - this.KNOWN_NEW_MOON) / 86400000;
+    const age = ((days % this.SYNODIC) + this.SYNODIC) % this.SYNODIC;
+    const illum = 0.5 * (1 - Math.cos((2 * Math.PI * age) / this.SYNODIC));
+    return { age, illum };
+  },
+
+  phaseName(age) {
+    if (age < 1.85)  return { name: "Новолуние",        icon: "🌑", tip: "Не сажать, не сеять" };
+    if (age < 5.54)  return { name: "Растущий серп",    icon: "🌒", tip: "Сажать зелень, листовые" };
+    if (age < 9.23)  return { name: "1-я четверть",     icon: "🌓", tip: "Сажать плодовые" };
+    if (age < 12.92) return { name: "Растущая",         icon: "🌔", tip: "Посадки, прививки" };
+    if (age < 16.61) return { name: "Полнолуние",       icon: "🌕", tip: "Сбор урожая, заготовки" };
+    if (age < 20.30) return { name: "Убывающая",        icon: "🌖", tip: "Корнеплоды, обрезка" };
+    if (age < 23.99) return { name: "3-я четверть",     icon: "🌗", tip: "Прополка, борьба с вредителями" };
+    if (age < 27.68) return { name: "Старый серп",      icon: "🌘", tip: "Уборка, заготовка дров" };
+    return { name: "Новолуние", icon: "🌑", tip: "Отдых, планирование" };
+  },
+
+  render(sel) {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    const p = this.phase();
+    const info = this.phaseName(p.age);
+    const illumPct = Math.round(p.illum * 100);
+    el.innerHTML = `
+      <div class="row between">
+        <div>
+          <div style="font-size:20px;font-weight:700">${info.icon} ${info.name}</div>
+          <div class="text-muted text-sm">Освещённость: ${illumPct}% · Возраст: ${p.age.toFixed(1)} дн.</div>
+          <div class="text-sm mt-8">💡 ${info.tip}</div>
+        </div>
+      </div>
+    `;
+  }
+};
+
+/* ===================================================
+   3. КАРТА (упрощённая: список меток + статичная схема)
+   =================================================== */
+const MapScreen = {
+  render() {
+    const marks = Store.get("map_marks", []);
+    const list = $("#map-marks-list");
+    if (list) {
+      renderList("map-marks-list", marks, m => `
+        <div class="list-item" data-mark="${m.id}">
+          <span class="li-icon">${m.icon || "📍"}</span>
+          <div class="li-body">
+            <div class="li-title">${Utils.escape(m.title)}</div>
+            <div class="li-sub">${m.category || "метка"}${m.coords ? " · " + m.coords : ""}</div>
+          </div>
+          <div class="li-actions">
+            <button class="li-btn" data-del-mark="${m.id}">🗑</button>
+          </div>
+        </div>
+      `);
+      $$("[data-del-mark]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.delMark;
+          const list2 = Store.get("map_marks", []).filter(x => x.id !== id);
+          Store.set("map_marks", list2);
+          this.render();
+        });
+      });
+    }
+
+    const btn = $("#btn-add-mark");
+    if (btn && !btn.dataset.bound) {
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", () => this.openAdd());
+    }
+
+    const mapView = $("#map-view");
+    if (mapView) {
+      mapView.innerHTML = `
+        <div style="text-align:center">
+          <div style="font-size:38px">🗺</div>
+          <div class="text-muted text-sm mt-8">Метки: ${marks.length}. Карта-схема появится в следующих версиях.</div>
+        </div>
+      `;
+    }
+  },
+
+  openAdd() {
+    Modal.open("Новая метка", `
+      <div class="field"><label>Название</label><input id="mark-title" placeholder="Например: Грибное место"></div>
+      <div class="field"><label>Категория</label>
+        <select id="mark-cat">
+          <option value="garden">🌱 Огород</option>
+          <option value="bees">🐝 Пасека</option>
+          <option value="mushroom">🍄 Грибы</option>
+          <option value="berries">🫐 Ягоды</option>
+          <option value="water">💧 Вода</option>
+          <option value="wood">🪵 Лес</option>
+          <option value="build">🏠 Постройка</option>
+          <option value="other">📍 Другое</option>
+        </select>
+      </div>
+      <div class="field"><label>Координаты (необязательно)</label>
+        <input id="mark-coords" placeholder="55.7558, 37.6173">
+      </div>
+      <div class="field"><label>Заметка</label><textarea id="mark-note" placeholder="Что тут?"></textarea></div>
+      <button class="btn btn-primary btn-block" id="mark-save">Сохранить</button>
+    `, () => {
+      $("#mark-save").addEventListener("click", () => {
+        const title = $("#mark-title").value.trim();
+        if (!title) { Toast.show("Введите название"); return; }
+        const icons = { garden:"🌱", bees:"🐝", mushroom:"🍄", berries:"🫐", water:"💧", wood:"🪵", build:"🏠", other:"📍" };
+        const cat = $("#mark-cat").value;
+        const list = Store.get("map_marks", []);
+        list.push({
+          id: Utils.uid(),
+          title,
+          category: cat,
+          icon: icons[cat] || "📍",
+          coords: $("#mark-coords").value.trim(),
+          note: $("#mark-note").value.trim(),
+          created: Date.now()
+        });
+        Store.set("map_marks", list);
+        Modal.close();
+        Toast.show("Метка добавлена");
+        this.render();
+      });
+    });
+  }
+};
+
+/* ===================================================
+   4. КАЛЕНДАРЬ СЕЗОННЫХ РАБОТ
+   =================================================== */
+const CalendarScreen = {
+  data: {
+    spring: [
+      { icon:"🌱", t:"Рассада", d:"Томаты, перцы, баклажаны — с февраля по март" },
+      { icon:"🥔", t:"Картофель", d:"Посадка при t почвы +8°C (обычно май)" },
+      { icon:"🌸", t:"Обрезка сада", d:"До распускания почек — санитарная и формирующая" },
+      { icon:"🐝", t:"Пасека", d:"Первый осмотр после облёта, чистка доньев" },
+      { icon:"🏠", t:"Дом", d:"Проверка крыши после зимы, водоотвод" }
+    ],
+    summer: [
+      { icon:"💧", t:"Полив", d:"Утром или вечером, не в жару" },
+      { icon:"🐛", t:"Вредители", d:"Профилактика каждые 10–14 дней" },
+      { icon:"🍯", t:"Медосбор", d:"Первый откач — обычно конец июня" },
+      { icon:"🌾", t:"Сенокос", d:"Коси в сухую погоду, суши в валках" },
+      { icon:"🍓", t:"Заготовки", d:"Варенья, компоты, заморозка" }
+    ],
+    autumn: [
+      { icon:"🧺", t:"Уборка урожая", d:"До первых заморозков — корнеплоды" },
+      { icon:"🍄", t:"Грибы", d:"Сентябрь-октябрь — основной сезон" },
+      { icon:"🪵", t:"Дрова", d:"Заготовка на зиму, колка, укладка" },
+      { icon:"🏠", t:"Утепление", d:"Окна, двери, чердак, подвал" },
+      { icon:"🐝", t:"Пасека", d:"Сборка гнёзд, обработка от варроа" }
+    ],
+    winter: [
+      { icon:"❄", t:"Снегозадержание", d:"На грядках — для влаги весной" },
+      { icon:"🔧", t:"Ремонт", d:"Инвентарь, техника, дом" },
+      { icon:"📚", t:"Планирование", d:"Что сажать, сколько, где" },
+      { icon:"🐝", t:"Пасека", d:"Контроль клуба, подкормка при оттепели" },
+      { icon:"🌱", t:"Рассада", d:"С февраля — первые посевы" }
+    ]
+  },
+
+  current: "spring",
+
+  render() {
+    bindChips("calendar-body", null);
+    this.renderSeason(this.current);
+    $$("#screen-calendar .chip[data-season]").forEach(chip => {
+      if (chip.dataset.bound) return;
+      chip.dataset.bound = "1";
+      chip.addEventListener("click", () => {
+        $$("#screen-calendar .chip[data-season]").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        this.current = chip.dataset.season;
+        this.renderSeason(this.current);
+      });
+    });
+  },
+
+  renderSeason(season) {
+    const body = $("#calendar-body");
+    if (!body) return;
+    const items = this.data[season] || [];
+    body.innerHTML = items.map(it => `
+      <div class="list-item">
+        <span class="li-icon">${it.icon}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(it.t)}</div>
+          <div class="li-sub">${Utils.escape(it.d)}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+};
+
+/* ===================================================
+   5. НАСТРОЙКИ
+   =================================================== */
+const SettingsScreen = {
+  render() {
+    const region = Store.get("region", "moscow");
+    const city = Store.get("city", "Moscow");
+    const setRegion = $("#set-region");
+    const setCity = $("#set-city");
+    if (setRegion) setRegion.value = region;
+    if (setCity) setCity.value = city;
+
+    if (setRegion && !setRegion.dataset.bound) {
+      setRegion.dataset.bound = "1";
+      setRegion.addEventListener("change", () => {
+        Store.set("region", setRegion.value);
+        Toast.show("Регион сохранён");
+      });
+    }
+    if (setCity && !setCity.dataset.bound) {
+      setCity.dataset.bound = "1";
+      setCity.addEventListener("change", () => {
+        Store.set("city", setCity.value.trim() || "Moscow");
+        Store.del(Weather.cacheKey);
+        Toast.show("Город сохранён");
+      });
+    }
+
+    const l = $("#set-theme-light");
+    const d = $("#set-theme-dark");
+    if (l && !l.dataset.bound) { l.dataset.bound = "1"; l.addEventListener("click", () => Theme.apply("light")); }
+    if (d && !d.dataset.bound) { d.dataset.bound = "1"; d.addEventListener("click", () => Theme.apply("dark")); }
+
+    const ex = $("#btn-export");
+    if (ex && !ex.dataset.bound) {
+      ex.dataset.bound = "1";
+      ex.addEventListener("click", () => this.exportData());
+    }
+    const im = $("#btn-import");
+    if (im && !im.dataset.bound) {
+      im.dataset.bound = "1";
+      im.addEventListener("click", () => this.importData());
+    }
+    const rs = $("#btn-reset");
+    if (rs && !rs.dataset.bound) {
+      rs.dataset.bound = "1";
+      rs.addEventListener("click", () => {
+        if (confirm("Удалить ВСЕ данные? Это необратимо.")) {
+          Store.clearAll();
+          Toast.show("Данные удалены");
+          setTimeout(() => location.reload(), 800);
+        }
+      });
+    }
+  },
+
+  exportData() {
+    const data = Store.all();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dvor-backup-${Utils.todayISO()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    Toast.show("Файл сохранён");
+  },
+
+  importData() {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json";
+    inp.onchange = () => {
+      const f = inp.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const data = JSON.parse(r.result);
+          Object.keys(data).forEach(k => Store.set(k, data[k]));
+          Toast.show("Импорт успешен");
+          setTimeout(() => location.reload(), 800);
+        } catch (e) {
+          Toast.show("Ошибка: файл повреждён");
+        }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }
+};
+
+/* ===================================================
+   6. ПОИСК (заглушка + реальный по данным)
+   =================================================== */
+const SearchScreen = {
+  focus() {
+    const inp = $("#search-input");
+    if (inp) setTimeout(() => inp.focus(), 200);
+    if (inp && !inp.dataset.bound) {
+      inp.dataset.bound = "1";
+      inp.addEventListener("input", Utils.debounce(() => this.run(inp.value), 200));
+    }
+  },
+  run(q) {
+    const wrap = $("#search-results");
+    if (!wrap) return;
+    q = (q || "").trim().toLowerCase();
+    if (q.length < 2) { wrap.innerHTML = ""; return; }
+
+    const results = [];
+    const push = (list, type, icon, titleKey = "title", subKey = "note") => {
+      (list || []).forEach(it => {
+        const t = (it[titleKey] || "").toString();
+        if (t.toLowerCase().includes(q) || (it[subKey] || "").toString().toLowerCase().includes(q)) {
+          results.push({ type, icon, title: t, sub: it[subKey] || "" });
+        }
+      });
+    };
+
+    push(Store.get("garden_beds", []), "Грядка", "🌱", "name", "note");
+    push(Store.get("bee_hives", []), "Улей", "🐝", "name", "note");
+    push(Store.get("mushroom_places", []), "Грибы", "🍄");
+    push(Store.get("livestock", []), "Живность", "🐔", "name", "note");
+    push(Store.get("build_projects", []), "Стройка", "🏠", "name", "note");
+    push(Store.get("map_marks", []), "Метка", "📍");
+    push(Store.get("tasks", []), "Задача", "✅");
+
+    if (!results.length) {
+      wrap.innerHTML = `<div class="empty"><span class="emoji">🔍</span><p>Ничего не найдено</p></div>`;
+      return;
+    }
+    wrap.innerHTML = results.slice(0, 40).map(r => `
+      <div class="list-item">
+        <span class="li-icon">${r.icon}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(r.title)}</div>
+          <div class="li-sub">${Utils.escape(r.type)}${r.sub ? " · " + Utils.escape(r.sub) : ""}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+};
+
+/* ===================================================
+   7. РЕГИСТРАЦИЯ ЭКРАННЫХ ХУКОВ
+   =================================================== */
+Object.assign(window.ScreenHooks || (window.ScreenHooks = {}), {
+  weather: () => Weather.renderScreen(),
+  calendar: () => CalendarScreen.render(),
+  settings: () => SettingsScreen.render(),
+  search: () => SearchScreen.focus()
+});
+
+</script>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 5 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 5: МОДУЛИ ХОЗЯЙСТВА                     -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. ОГОРОД
+   =================================================== */
+const Garden = {
+  currentTab: "beds",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#garden-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+
+    const addBtn = $("#btn-add-bed");
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = "1";
+      addBtn.addEventListener("click", () => this.openAddBed());
+    }
+  },
+
+  renderTab(tab) {
+    const c = $("#garden-content");
+    if (!c) return;
+
+    if (tab === "beds") {
+      c.innerHTML = `
+        <div class="row between mb-12">
+          <span class="text-muted">Твои грядки</span>
+          <button class="btn btn-primary btn-sm" id="btn-add-bed">+ Грядка</button>
+        </div>
+        <div class="list" id="garden-beds-list"></div>
+      `;
+      $("#btn-add-bed").addEventListener("click", () => this.openAddBed());
+      this.renderBeds();
+    } else if (tab === "plantings") {
+      this.renderPlantings(c);
+    } else if (tab === "harvest") {
+      this.renderHarvest(c);
+    } else if (tab === "calendar") {
+      this.renderCalendar(c);
+    } else if (tab === "pests") {
+      this.renderPests(c);
+    }
+  },
+
+  renderBeds() {
+    const beds = Store.get("garden_beds", []);
+    renderList("garden-beds-list", beds, b => `
+      <div class="list-item" data-bed="${b.id}">
+        <span class="li-icon">${b.icon || "🌱"}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(b.name)}</div>
+          <div class="li-sub">${b.size ? Utils.escape(b.size) + " · " : ""}${Utils.escape(b.culture || "не засажена")}</div>
+        </div>
+        <div class="li-actions">
+          <button class="li-btn" data-edit-bed="${b.id}">✎</button>
+          <button class="li-btn" data-del-bed="${b.id}">🗑</button>
+        </div>
+      </div>
+    `);
+    $$("[data-edit-bed]").forEach(b => b.addEventListener("click", () => this.openAddBed(b.dataset.editBed)));
+    $$("[data-del-bed]").forEach(b => b.addEventListener("click", () => {
+      if (!confirm("Удалить грядку?")) return;
+      Store.set("garden_beds", Store.get("garden_beds", []).filter(x => x.id !== b.dataset.delBed));
+      this.renderBeds();
+    }));
+  },
+
+  openAddBed(id) {
+    const all = Store.get("garden_beds", []);
+    const bed = id ? all.find(x => x.id === id) : null;
+    const isEdit = !!bed;
+    Modal.open(isEdit ? "Редактировать грядку" : "Новая грядка", `
+      <div class="field"><label>Название</label><input id="bed-name" value="${Utils.escape(bed?.name || "")}" placeholder="Например: Грядка №1"></div>
+      <div class="field"><label>Размер</label><input id="bed-size" value="${Utils.escape(bed?.size || "")}" placeholder="6×1 м"></div>
+      <div class="field"><label>Что посажено</label><input id="bed-culture" value="${Utils.escape(bed?.culture || "")}" placeholder="Томаты, морковь…"></div>
+      <div class="field"><label>Дата посадки</label><input type="date" id="bed-date" value="${bed?.date || Utils.todayISO()}"></div>
+      <div class="field"><label>Заметка</label><textarea id="bed-note" placeholder="Сорт, удобрения…">${Utils.escape(bed?.note || "")}</textarea></div>
+      <button class="btn btn-primary btn-block" id="bed-save">${isEdit ? "Сохранить" : "Создать"}</button>
+    `, () => {
+      $("#bed-save").addEventListener("click", () => {
+        const name = $("#bed-name").value.trim();
+        if (!name) { Toast.show("Введите название"); return; }
+        const list = Store.get("garden_beds", []);
+        const data = {
+          id: bed ? bed.id : Utils.uid(),
+          name,
+          size: $("#bed-size").value.trim(),
+          culture: $("#bed-culture").value.trim(),
+          date: $("#bed-date").value,
+          note: $("#bed-note").value.trim(),
+          icon: "🌱",
+          created: bed ? bed.created : Date.now()
+        };
+        if (isEdit) {
+          const i = list.findIndex(x => x.id === bed.id);
+          list[i] = data;
+        } else list.push(data);
+        Store.set("garden_beds", list);
+        Modal.close();
+        Toast.show(isEdit ? "Обновлено" : "Грядка создана");
+        this.render();
+      });
+    });
+  },
+
+  renderPlantings(c) {
+    const plantings = Store.get("garden_plantings", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Журнал посадок</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-plant">+ Посадка</button>
+      </div>
+      <div class="list" id="plantings-list"></div>
+    `;
+    $("#btn-add-plant").addEventListener("click", () => {
+      Modal.open("Новая посадка", `
+        <div class="field"><label>Культура</label><input id="pl-culture" placeholder="Помидоры"></div>
+        <div class="field"><label>Сорт</label><input id="pl-sort" placeholder="Бычье сердце"></div>
+        <div class="field"><label>Дата посадки</label><input type="date" id="pl-date" value="${Utils.todayISO()}"></div>
+        <div class="field"><label>Место</label><input id="pl-place" placeholder="Теплица / грядка №2"></div>
+        <div class="field"><label>Заметка</label><textarea id="pl-note"></textarea></div>
+        <button class="btn btn-primary btn-block" id="pl-save">Сохранить</button>
+      `, () => {
+        $("#pl-save").addEventListener("click", () => {
+          const culture = $("#pl-culture").value.trim();
+          if (!culture) { Toast.show("Введите культуру"); return; }
+          const list = Store.get("garden_plantings", []);
+          list.push({
+            id: Utils.uid(), culture,
+            sort: $("#pl-sort").value.trim(),
+            date: $("#pl-date").value,
+            place: $("#pl-place").value.trim(),
+            note: $("#pl-note").value.trim()
+          });
+          Store.set("garden_plantings", list);
+          Modal.close();
+          Toast.show("Посадка добавлена");
+          this.render();
+        });
+      });
+    });
+    renderList("plantings-list", plantings.sort((a,b) => b.date.localeCompare(a.date)), p => `
+      <div class="list-item">
+        <span class="li-icon">🌿</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(p.culture)}${p.sort ? " · " + Utils.escape(p.sort) : ""}</div>
+          <div class="li-sub">${Utils.fmtDate(p.date)}${p.place ? " · " + Utils.escape(p.place) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-pl="${p.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-pl]").forEach(b => b.addEventListener("click", () => {
+      Store.set("garden_plantings", Store.get("garden_plantings", []).filter(x => x.id !== b.dataset.delPl));
+      this.render();
+    }));
+  },
+
+  renderHarvest(c) {
+    const harvest = Store.get("garden_harvest", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Собранный урожай</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-harv">+ Запись</button>
+      </div>
+      <div class="list" id="harv-list"></div>
+    `;
+    $("#btn-add-harv").addEventListener("click", () => {
+      Modal.open("Запись урожая", `
+        <div class="field"><label>Что собрано</label><input id="hv-culture" placeholder="Огурцы"></div>
+        <div class="field"><label>Количество</label><input id="hv-qty" placeholder="5 кг / 12 шт"></div>
+        <div class="field"><label>Дата</label><input type="date" id="hv-date" value="${Utils.todayISO()}"></div>
+        <div class="field"><label>Заметка</label><textarea id="hv-note"></textarea></div>
+        <button class="btn btn-primary btn-block" id="hv-save">Сохранить</button>
+      `, () => {
+        $("#hv-save").addEventListener("click", () => {
+          const culture = $("#hv-culture").value.trim();
+          if (!culture) { Toast.show("Заполните поле"); return; }
+          const list = Store.get("garden_harvest", []);
+          list.push({
+            id: Utils.uid(), culture,
+            qty: $("#hv-qty").value.trim(),
+            date: $("#hv-date").value,
+            note: $("#hv-note").value.trim()
+          });
+          Store.set("garden_harvest", list);
+          Modal.close();
+          Toast.show("Сохранено");
+          this.render();
+        });
+      });
+    });
+    renderList("harv-list", harvest.sort((a,b) => b.date.localeCompare(a.date)), h => `
+      <div class="list-item">
+        <span class="li-icon">🧺</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(h.culture)} — ${Utils.escape(h.qty || "—")}</div>
+          <div class="li-sub">${Utils.fmtDate(h.date)}${h.note ? " · " + Utils.escape(h.note) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-hv="${h.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-hv]").forEach(b => b.addEventListener("click", () => {
+      Store.set("garden_harvest", Store.get("garden_harvest", []).filter(x => x.id !== b.dataset.delHv));
+      this.render();
+    }));
+  },
+
+  renderCalendar(c) {
+    const data = [
+      { m:"Февраль", t:"Рассада томатов, перцев, баклажанов" },
+      { m:"Март",    t:"Рассада капусты, посев на зелень дома" },
+      { m:"Апрель",  t:"Яровизация картофеля, посев моркови в грунт" },
+      { m:"Май",     t:"Картофель, лук, чеснок, огурцы под плёнку" },
+      { m:"Июнь",    t:"Томаты в грунт, подкормка, первое окучивание" },
+      { m:"Июль",    t:"Полив, пасынкование, обработка от фитофторы" },
+      { m:"Август",  t:"Уборка лука, чеснока, начало сбора томатов" },
+      { m:"Сентябрь",t:"Уборка корнеплодов, посев сидератов" },
+      { m:"Октябрь", t:"Посев под зиму: чеснок, лук, морковь" },
+      { m:"Ноябрь",  t:"Укрытие многолетников, последние заготовки" }
+    ];
+    c.innerHTML = data.map(d => `
+      <div class="list-item">
+        <span class="li-icon">📅</span>
+        <div class="li-body">
+          <div class="li-title">${d.m}</div>
+          <div class="li-sub">${Utils.escape(d.t)}</div>
+        </div>
+      </div>
+    `).join("");
+  },
+
+  renderPests(c) {
+    const pests = [
+      { icon:"🐛", t:"Колорадский жук", d:"Собирать вручную, зола+мыло, «Престиж»" },
+      { icon:"🦠", t:"Фитофтора", d:"Медьсодержащие, убирать нижние листья" },
+      { icon:"🐌", t:"Слизни", d:"Доломитовая мука, зола вокруг растений" },
+      { icon:"🕷", t:"Паутинный клещ", d:"Мыльный раствор, «Фитоверм»" },
+      { icon:"🐜", t:"Тля", d:"Мыло+вода, божьи коровки, «Актара»" },
+      { icon:"🍄", t:"Мучнистая роса", d:"Сода+мыло, «Топаз»" },
+      { icon:"🐛", t:"Проволочник", d:"Известкование, сидераты (фацелия)" }
+    ];
+    c.innerHTML = pests.map(p => `
+      <div class="accordion">
+        <div class="accordion-head">${p.icon} ${Utils.escape(p.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(p.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  }
+};
+
+/* ===================================================
+   2. ГРИБЫ
+   =================================================== */
+const Mushrooms = {
+  currentTab: "wild",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#mushroom-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  renderTab(tab) {
+    const c = $("#mushroom-content");
+    if (!c) return;
+    if (tab === "wild") this.renderWild(c);
+    else if (tab === "grow") this.renderGrow(c);
+    else if (tab === "guide") this.renderGuide(c);
+    else if (tab === "places") this.renderPlaces(c);
+  },
+
+  renderWild(c) {
+    const found = Store.get("mushroom_finds", []);
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">🌲 Календарь грибника</div>
+        <div class="text-sm">Апрель — сморчки, строчки<br>
+        Июнь — подберёзовики, маслята<br>
+        Июль — лисички, белые (первая волна)<br>
+        Август — белые, подосиновики, грузди<br>
+        Сентябрь-октябрь — опята, белые, лисички<br>
+        Ноябрь — зимние опята (фламмулина)</div>
+      </div>
+      <div class="row between mb-12">
+        <span class="text-muted">Мои находки</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-find">+ Находка</button>
+      </div>
+      <div class="list" id="finds-list"></div>
+    `;
+    $("#btn-add-find").addEventListener("click", () => this.openAddFind());
+    renderList("finds-list", found.sort((a,b) => b.date.localeCompare(a.date)), f => `
+      <div class="list-item">
+        <span class="li-icon">🍄</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(f.species)} — ${Utils.escape(f.qty || "—")}</div>
+          <div class="li-sub">${Utils.fmtDate(f.date)}${f.place ? " · " + Utils.escape(f.place) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-find="${f.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-find]").forEach(b => b.addEventListener("click", () => {
+      Store.set("mushroom_finds", Store.get("mushroom_finds", []).filter(x => x.id !== b.dataset.delFind));
+      this.render();
+    }));
+  },
+
+  openAddFind() {
+    Modal.open("Новая находка", `
+      <div class="field"><label>Вид гриба</label><input id="f-species" placeholder="Белый, лисичка…"></div>
+      <div class="field"><label>Количество</label><input id="f-qty" placeholder="10 шт / 2 кг"></div>
+      <div class="field"><label>Место</label><input id="f-place" placeholder="Берёзовая роща"></div>
+      <div class="field"><label>Дата</label><input type="date" id="f-date" value="${Utils.todayISO()}"></div>
+      <div class="field"><label>Заметка</label><textarea id="f-note"></textarea></div>
+      <button class="btn btn-primary btn-block" id="f-save">Сохранить</button>
+    `, () => {
+      $("#f-save").addEventListener("click", () => {
+        const species = $("#f-species").value.trim();
+        if (!species) { Toast.show("Введите вид"); return; }
+        const list = Store.get("mushroom_finds", []);
+        list.push({
+          id: Utils.uid(), species,
+          qty: $("#f-qty").value.trim(),
+          place: $("#f-place").value.trim(),
+          date: $("#f-date").value,
+          note: $("#f-note").value.trim()
+        });
+        Store.set("mushroom_finds", list);
+        Modal.close();
+        Toast.show("Записано");
+        this.render();
+      });
+    });
+  },
+
+  renderGrow(c) {
+    const crops = Store.get("mushroom_crops", []);
+    const guides = [
+      { icon:"⚪", t:"Шампиньоны", d:"Компост, 18–22°C, влажность 85%, в тёмном месте" },
+      { icon:"🟤", t:"Вешенки", d:"Солома/опилки, 15–22°C, свет 12ч/сутки" },
+      { icon:"🌰", t:"Шиитаке", d:"Дубовые опилки/брёвна, 15–20°C, 6–12 мес до плодов" },
+      { icon:"🟡", t:"Опята", d:"Пеньки лиственных, влажность 90%, осень" },
+      { icon:"🔴", t:"Рейши", d:"Опилки+брёвна, 20–25°C, медленный рост" },
+      { icon:"🟠", t:"Лисички (сложно)", d:"Симбиоз с деревьями, в культуре — редко" }
+    ];
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">🌱 Что можно вырастить</div>
+        ${guides.map(g => `
+          <div class="accordion">
+            <div class="accordion-head">${g.icon} ${Utils.escape(g.t)} <span class="arrow">▶</span></div>
+            <div class="accordion-body"><p>${Utils.escape(g.d)}</p></div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="row between mb-12">
+        <span class="text-muted">Мои грибные блоки/грядки</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-crop">+ Заложить</button>
+      </div>
+      <div class="list" id="crops-list"></div>
+    `;
+    bindAccordions(c);
+    $("#btn-add-crop").addEventListener("click", () => this.openAddCrop());
+    renderList("crops-list", crops, cr => {
+      const days = Utils.daysBetween(cr.date, Utils.todayISO());
+      return `
+        <div class="list-item">
+          <span class="li-icon">${cr.icon || "🍄"}</span>
+          <div class="li-body">
+            <div class="li-title">${Utils.escape(cr.species)}</div>
+            <div class="li-sub">Заложено: ${Utils.fmtDate(cr.date)} · ${days} дн. назад · ${Utils.escape(cr.substrate || "")}</div>
+          </div>
+          <div class="li-actions"><button class="li-btn" data-del-crop="${cr.id}">🗑</button></div>
+        </div>
+      `;
+    });
+    $$("[data-del-crop]").forEach(b => b.addEventListener("click", () => {
+      Store.set("mushroom_crops", Store.get("mushroom_crops", []).filter(x => x.id !== b.dataset.delCrop));
+      this.render();
+    }));
+  },
+
+  openAddCrop() {
+    Modal.open("Заложить грибную культуру", `
+      <div class="field"><label>Вид</label>
+        <select id="c-species">
+          <option>Шампиньоны</option><option>Вешенки</option><option>Шиитаке</option>
+          <option>Опята</option><option>Рейши</option><option>Эринги</option>
+        </select>
+      </div>
+      <div class="field"><label>Субстрат</label><input id="c-substrate" placeholder="Солома, опилки, компост…"></div>
+      <div class="field"><label>Дата закладки</label><input type="date" id="c-date" value="${Utils.todayISO()}"></div>
+      <div class="field"><label>Место</label><input id="c-place" placeholder="Погреб / сарай / теплица"></div>
+      <div class="field"><label>Заметка</label><textarea id="c-note"></textarea></div>
+      <button class="btn btn-primary btn-block" id="c-save">Сохранить</button>
+    `, () => {
+      $("#c-save").addEventListener("click", () => {
+        const list = Store.get("mushroom_crops", []);
+        const sp = $("#c-species").value;
+        const icons = { "Шампиньоны":"⚪","Вешенки":"🟤","Шиитаке":"🌰","Опята":"🟡","Рейши":"🔴","Эринги":"🟠" };
+        list.push({
+          id: Utils.uid(), species: sp,
+          icon: icons[sp] || "🍄",
+          substrate: $("#c-substrate").value.trim(),
+          date: $("#c-date").value,
+          place: $("#c-place").value.trim(),
+          note: $("#c-note").value.trim()
+        });
+        Store.set("mushroom_crops", list);
+        Modal.close();
+        Toast.show("Культура заложена");
+        this.render();
+      });
+    });
+  },
+
+  renderGuide(c) {
+    const guide = [
+      { t:"Белый гриб", d:"Шляпка от светло- до тёмно-коричневой, трубчатый слой белый/кремовый, ножка плотная. ⚠ Двойник: желчный гриб (горький, трубчатый слой розовеет)." },
+      { t:"Лисичка", d:"Ярко-жёлтая, пластинки переходят на ножку, мякоть не червивеет. ⚠ Двойник: ложная лисичка (ярче, пластинки частые)." },
+      { t:"Подберёзовик", d:"Серая/бурая шляпка, ножка с тёмными чешуйками. Симбиоз с берёзой." },
+      { t:"Подосиновик", d:"Красно-оранжевая шляпка, ножка с чёрными чешуйками. На срезе синеет." },
+      { t:"Маслёнок", d:"Скользкая коричневая шляпка, трубчатый слой жёлтый. Растёт в соснах." },
+      { t:"Опёнок осенний", d:"Медовый цвет, пластинки кремовые, на пне. ⚠ Двойник: ложный опёнок (ярко-жёлтый, пластинки зелёные)." },
+      { t:"Груздь", d:"Белая шляпка с бахромой, млечный сок едкий. Только солёный." },
+      { t:"Сморчок", d:"Коническая ячеистая шляпка, весной. ⚠ Требует отваривания, иначе ядовит!" }
+    ];
+    c.innerHTML = guide.map(g => `
+      <div class="accordion">
+        <div class="accordion-head">🍄 ${Utils.escape(g.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(g.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  },
+
+  renderPlaces(c) {
+    const places = Store.get("mushroom_places", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Мои грибные места</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-place">+ Место</button>
+      </div>
+      <div class="list" id="places-list"></div>
+    `;
+    $("#btn-add-place").addEventListener("click", () => {
+      Modal.open("Грибное место", `
+        <div class="field"><label>Название</label><input id="mp-name" placeholder="За речкой"></div>
+        <div class="field"><label>Координаты</label><input id="mp-coords" placeholder="55.75, 37.61"></div>
+        <div class="field"><label>Что растёт</label><input id="mp-species" placeholder="Белые, лисички"></div>
+        <div class="field"><label>Заметка</label><textarea id="mp-note"></textarea></div>
+        <button class="btn btn-primary btn-block" id="mp-save">Сохранить</button>
+      `, () => {
+        $("#mp-save").addEventListener("click", () => {
+          const name = $("#mp-name").value.trim();
+          if (!name) { Toast.show("Введите название"); return; }
+          const list = Store.get("mushroom_places", []);
+          list.push({
+            id: Utils.uid(), name,
+            coords: $("#mp-coords").value.trim(),
+            species: $("#mp-species").value.trim(),
+            note: $("#mp-note").value.trim()
+          });
+          Store.set("mushroom_places", list);
+          Modal.close();
+          Toast.show("Место сохранено");
+          this.render();
+        });
+      });
+    });
+    renderList("places-list", places, p => `
+      <div class="list-item">
+        <span class="li-icon">📍</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(p.name)}</div>
+          <div class="li-sub">${Utils.escape(p.species || "")}${p.coords ? " · " + Utils.escape(p.coords) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-mp="${p.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-mp]").forEach(b => b.addEventListener("click", () => {
+      Store.set("mushroom_places", Store.get("mushroom_places", []).filter(x => x.id !== b.dataset.delMp));
+      this.render();
+    }));
+  }
+};
+
+/* ===================================================
+   3. ПАСЕКА
+   =================================================== */
+const Bees = {
+  currentTab: "hives",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#bee-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+    const addBtn = $("#btn-add-hive");
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = "1";
+      addBtn.addEventListener("click", () => this.openAddHive());
+    }
+  },
+
+  renderTab(tab) {
+    const c = $("#bee-content");
+    if (!c) return;
+    if (tab === "hives") this.renderHives(c);
+    else if (tab === "inspections") this.renderInspections(c);
+    else if (tab === "honey") this.renderHoney(c);
+    else if (tab === "diseases") this.renderDiseases(c);
+    else if (tab === "calendar") this.renderCalendar(c);
+  },
+
+  renderHives(c) {
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Твои ульи</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-hive">+ Улей</button>
+      </div>
+      <div class="list" id="bee-hives-list"></div>
+    `;
+    $("#btn-add-hive").addEventListener("click", () => this.openAddHive());
+    const hives = Store.get("bee_hives", []);
+    renderList("bee-hives-list", hives, h => `
+      <div class="list-item">
+        <span class="li-icon">🐝</span>
+        <div class="li-body">
+          <div class="li-title">Улей №${Utils.escape(h.number || "?")}</div>
+          <div class="li-sub">${Utils.escape(h.type || "")}${h.queen ? " · Матка: " + Utils.escape(h.queen) : ""}</div>
+        </div>
+        <div class="li-actions">
+          <button class="li-btn" data-edit-hive="${h.id}">✎</button>
+          <button class="li-btn" data-del-hive="${h.id}">🗑</button>
+        </div>
+      </div>
+    `);
+    $$("[data-del-hive]").forEach(b => b.addEventListener("click", () => {
+      if (!confirm("Удалить улей?")) return;
+      Store.set("bee_hives", Store.get("bee_hives", []).filter(x => x.id !== b.dataset.delHive));
+      this.render();
+    }));
+    $$("[data-edit-hive]").forEach(b => b.addEventListener("click", () => this.openAddHive(b.dataset.editHive)));
+  },
+
+  openAddHive(id) {
+    const all = Store.get("bee_hives", []);
+    const h = id ? all.find(x => x.id === id) : null;
+    const isEdit = !!h;
+    Modal.open(isEdit ? "Улей" : "Новый улей", `
+      <div class="field"><label>Номер</label><input id="h-num" value="${Utils.escape(h?.number || "")}" placeholder="1"></div>
+      <div class="field"><label>Тип</label>
+        <select id="h-type">
+          <option ${h?.type==="Дадан"?"selected":""}>Дадан</option>
+          <option ${h?.type==="Рута"?"selected":""}>Рута</option>
+          <option ${h?.type==="Лежак"?"selected":""}>Лежак</option>
+          <option ${h?.type==="Украинский"?"selected":""}>Украинский</option>
+        </select>
+      </div>
+      <div class="field"><label>Матка (год, порода)</label><input id="h-queen" value="${Utils.escape(h?.queen || "")}" placeholder="2024, Карника"></div>
+      <div class="field"><label>Корпусов / рамок</label><input id="h-frames" value="${Utils.escape(h?.frames || "")}" placeholder="2 корпуса, 20 рамок"></div>
+      <div class="field"><label>Заметка</label><textarea id="h-note">${Utils.escape(h?.note || "")}</textarea></div>
+      <button class="btn btn-primary btn-block" id="h-save">${isEdit ? "Сохранить" : "Создать"}</button>
+    `, () => {
+      $("#h-save").addEventListener("click", () => {
+        const list = Store.get("bee_hives", []);
+        const data = {
+          id: h ? h.id : Utils.uid(),
+          number: $("#h-num").value.trim(),
+          type: $("#h-type").value,
+          queen: $("#h-queen").value.trim(),
+          frames: $("#h-frames").value.trim(),
+          note: $("#h-note").value.trim()
+        };
+        if (isEdit) {
+          const i = list.findIndex(x => x.id === h.id);
+          list[i] = data;
+        } else list.push(data);
+        Store.set("bee_hives", list);
+        Modal.close();
+        Toast.show(isEdit ? "Обновлено" : "Улей добавлен");
+        this.render();
+      });
+    });
+  },
+
+  renderInspections(c) {
+    const list = Store.get("bee_inspections", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Журнал осмотров</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-insp">+ Осмотр</button>
+      </div>
+      <div class="list" id="insp-list"></div>
+    `;
+    $("#btn-add-insp").addEventListener("click", () => {
+      Modal.open("Осмотр улья", `
+        <div class="field"><label>Улей №</label><input id="i-hive" placeholder="1"></div>
+        <div class="field"><label>Дата</label><input type="date" id="i-date" value="${Utils.todayISO()}"></div>
+        <div class="field"><label>Сила семьи</label>
+          <select id="i-strength"><option>Слабая</option><option>Средняя</option><option>Сильная</option></select>
+        </div>
+        <div class="field"><label>Что видел</label><textarea id="i-note" placeholder="Матка, расплод, корма…"></textarea></div>
+        <div class="field"><label>Что сделал</label><textarea id="i-done" placeholder="Расширил, подкормил…"></textarea></div>
+        <button class="btn btn-primary btn-block" id="i-save">Сохранить</button>
+      `, () => {
+        $("#i-save").addEventListener("click", () => {
+          const l = Store.get("bee_inspections", []);
+          l.push({
+            id: Utils.uid(),
+            hive: $("#i-hive").value.trim(),
+            date: $("#i-date").value,
+            strength: $("#i-strength").value,
+            note: $("#i-note").value.trim(),
+            done: $("#i-done").value.trim()
+          });
+          Store.set("bee_inspections", l);
+          Modal.close();
+          Toast.show("Осмотр записан");
+          this.render();
+        });
+      });
+    });
+    renderList("insp-list", list.sort((a,b) => b.date.localeCompare(a.date)), i => `
+      <div class="list-item">
+        <span class="li-icon">🔍</span>
+        <div class="li-body">
+          <div class="li-title">Улей №${Utils.escape(i.hive)} · ${Utils.escape(i.strength)}</div>
+          <div class="li-sub">${Utils.fmtDate(i.date)}${i.note ? " · " + Utils.escape(i.note) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-insp="${i.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-insp]").forEach(b => b.addEventListener("click", () => {
+      Store.set("bee_inspections", Store.get("bee_inspections", []).filter(x => x.id !== b.dataset.delInsp));
+      this.render();
+    }));
+  },
+
+  renderHoney(c) {
+    const list = Store.get("bee_honey", []);
+    const total = list.reduce((s, x) => s + (parseFloat(x.kg) || 0), 0);
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">🍯 Всего собрано</div>
+        <div style="font-size:32px;font-weight:800">${total.toFixed(1)} кг</div>
+      </div>
+      <div class="row between mb-12">
+        <span class="text-muted">Откачки</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-honey">+ Откачка</button>
+      </div>
+      <div class="list" id="honey-list"></div>
+    `;
+    $("#btn-add-honey").addEventListener("click", () => {
+      Modal.open("Откачка мёда", `
+        <div class="field"><label>Улей / пасека</label><input id="ho-hive" placeholder="Все / №1"></div>
+        <div class="field"><label>Кг</label><input type="number" id="ho-kg" step="0.1"></div>
+        <div class="field"><label>Сорт</label><input id="ho-sort" placeholder="Липовый, разнотравье"></div>
+        <div class="field"><label>Дата</label><input type="date" id="ho-date" value="${Utils.todayISO()}"></div>
+        <button class="btn btn-primary btn-block" id="ho-save">Сохранить</button>
+      `, () => {
+        $("#ho-save").addEventListener("click", () => {
+          const l = Store.get("bee_honey", []);
+          l.push({
+            id: Utils.uid(),
+            hive: $("#ho-hive").value.trim(),
+            kg: $("#ho-kg").value,
+            sort: $("#ho-sort").value.trim(),
+            date: $("#ho-date").value
+          });
+          Store.set("bee_honey", l);
+          Modal.close();
+          Toast.show("Откачка сохранена");
+          this.render();
+        });
+      });
+    });
+    renderList("honey-list", list.sort((a,b) => b.date.localeCompare(a.date)), h => `
+      <div class="list-item">
+        <span class="li-icon">🍯</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(h.kg)} кг · ${Utils.escape(h.sort || "—")}</div>
+          <div class="li-sub">${Utils.fmtDate(h.date)}${h.hive ? " · улей " + Utils.escape(h.hive) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-honey="${h.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-honey]").forEach(b => b.addEventListener("click", () => {
+      Store.set("bee_honey", Store.get("bee_honey", []).filter(x => x.id !== b.dataset.delHoney));
+      this.render();
+    }));
+  },
+
+  renderDiseases(c) {
+    const list = [
+      { t:"Варроа (клещ)", d:"Клещ на взрослых пчёлах и расплоде. Обработка: щавелевая/муравьиная кислота, «Бипин», «Апистан». Весной и осенью." },
+      { t:"Аскосфероз (известковый)", d:"Белые мумии в сотах. Причины: сырость. Лечение: удалить соты, «Аскосан», проветривание." },
+      { t:"Гнилец (американский/европейский)", d:"Гнилостный запах, личинки бурые. Карантин, сжигание рамок, антибиотики." },
+      { t:"Нозематоз", d:"Понос, слабая семья. Лечение: «Ноземат», чистая вода, солнце." },
+      { t:"Восковая моль", d:"Портит соты в хранилище. Хранить в сухости, проветривать, «Бипин-Т»." }
+    ];
+    c.innerHTML = list.map(x => `
+      <div class="accordion">
+        <div class="accordion-head">🦠 ${Utils.escape(x.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(x.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  },
+
+  renderCalendar(c) {
+    const data = [
+      { m:"Февраль", t:"Проверка клуба, при необходимости подкормка" },
+      { m:"Март-Апрель", t:"Первый облёт, чистка, весенняя ревизия" },
+      { m:"Май", t:"Расширение гнёзд, противороевые меры" },
+      { m:"Июнь", t:"Первый медосбор, откачка, отводки" },
+      { m:"Июль", t:"Главный медосбор, качка мёда" },
+      { m:"Август", t:"Сборка гнёзд на зиму, обработка от варроа" },
+      { m:"Сентябрь", t:"Пополнение кормов, утепление" },
+      { m:"Октябрь-Ноябрь", t:"Последняя обработка, зимовка" }
+    ];
+    c.innerHTML = data.map(d => `
+      <div class="list-item">
+        <span class="li-icon">📅</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(d.m)}</div>
+          <div class="li-sub">${Utils.escape(d.t)}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+};
+
+/* ===================================================
+   4. ЖИВНОСТЬ
+   =================================================== */
+const Livestock = {
+  currentTab: "animals",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#live-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+    const addBtn = $("#btn-add-animal");
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = "1";
+      addBtn.addEventListener("click", () => this.openAddAnimal());
+    }
+  },
+
+  renderTab(tab) {
+    const c = $("#live-content");
+    if (!c) return;
+    if (tab === "animals") this.renderAnimals(c);
+    else if (tab === "feed") this.renderFeed(c);
+    else if (tab === "vet") this.renderVet(c);
+    else if (tab === "products") this.renderProducts(c);
+  },
+
+  icons: { "Куры":"🐔","Утки":"🦆","Гуси":"🦢","Индюки":"🦃","Козы":"🐐","Овцы":"🐑","Коровы":"🐄","Кролики":"🐇","Свиньи":"🐖","Рыба":"🐟" },
+
+  renderAnimals(c) {
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Твоё поголовье</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-animal">+ Добавить</button>
+      </div>
+      <div class="list" id="live-animals-list"></div>
+    `;
+    $("#btn-add-animal").addEventListener("click", () => this.openAddAnimal());
+    const list = Store.get("livestock", []);
+    renderList("live-animals-list", list, a => `
+      <div class="list-item">
+        <span class="li-icon">${a.icon || "🐔"}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(a.name)} · ${Utils.escape(a.count || "1")} шт</div>
+          <div class="li-sub">${Utils.escape(a.breed || "")}${a.birth ? " · " + Utils.fmtDate(a.birth) : ""}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-animal="${a.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-animal]").forEach(b => b.addEventListener("click", () => {
+      Store.set("livestock", Store.get("livestock", []).filter(x => x.id !== b.dataset.delAnimal));
+      this.render();
+    }));
+  },
+
+  openAddAnimal() {
+    Modal.open("Добавить живность", `
+      <div class="field"><label>Вид</label>
+        <select id="a-name">
+          ${Object.keys(this.icons).map(k => `<option>${k}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field"><label>Количество</label><input type="number" id="a-count" value="1"></div>
+      <div class="field"><label>Порода</label><input id="a-breed" placeholder="Ломан Браун"></div>
+      <div class="field"><label>Дата рождения/приобретения</label><input type="date" id="a-birth" value="${Utils.todayISO()}"></div>
+      <div class="field"><label>Заметка</label><textarea id="a-note"></textarea></div>
+      <button class="btn btn-primary btn-block" id="a-save">Сохранить</button>
+    `, () => {
+      $("#a-save").addEventListener("click", () => {
+        const name = $("#a-name").value;
+        const list = Store.get("livestock", []);
+        list.push({
+          id: Utils.uid(), name,
+          icon: this.icons[name] || "🐔",
+          count: $("#a-count").value,
+          breed: $("#a-breed").value.trim(),
+          birth: $("#a-birth").value,
+          note: $("#a-note").value.trim()
+        });
+        Store.set("livestock", list);
+        Modal.close();
+        Toast.show("Добавлено");
+        this.render();
+      });
+    });
+  },
+
+  renderFeed(c) {
+    const list = Store.get("livestock_feed", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Расход корма</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-feed">+ Запись</button>
+      </div>
+      <div class="list" id="feed-list"></div>
+    `;
+    $("#btn-add-feed").addEventListener("click", () => {
+      Modal.open("Запись корма", `
+        <div class="field"><label>Кому</label><input id="fd-who" placeholder="Курам / козе"></div>
+        <div class="field"><label>Что</label><input id="fd-what" placeholder="Комбикорм / сено"></div>
+        <div class="field"><label>Количество</label><input id="fd-qty" placeholder="5 кг"></div>
+        <div class="field"><label>Дата</label><input type="date" id="fd-date" value="${Utils.todayISO()}"></div>
+        <button class="btn btn-primary btn-block" id="fd-save">Сохранить</button>
+      `, () => {
+        $("#fd-save").addEventListener("click", () => {
+          const l = Store.get("livestock_feed", []);
+          l.push({
+            id: Utils.uid(),
+            who: $("#fd-who").value.trim(),
+            what: $("#fd-what").value.trim(),
+            qty: $("#fd-qty").value.trim(),
+            date: $("#fd-date").value
+          });
+          Store.set("livestock_feed", l);
+          Modal.close();
+          Toast.show("Записано");
+          this.render();
+        });
+      });
+    });
+    renderList("feed-list", list.sort((a,b) => b.date.localeCompare(a.date)), f => `
+      <div class="list-item">
+        <span class="li-icon">🌾</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(f.who)} — ${Utils.escape(f.qty)}</div>
+          <div class="li-sub">${Utils.fmtDate(f.date)} · ${Utils.escape(f.what)}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-fd="${f.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-fd]").forEach(b => b.addEventListener("click", () => {
+      Store.set("livestock_feed", Store.get("livestock_feed", []).filter(x => x.id !== b.dataset.delFd));
+      this.render();
+    }));
+  },
+
+  renderVet(c) {
+    const list = [
+      { t:"Куры", d:"Вакцинация: Ньюкасл, Гамборо. Витамины зимой. Обработка от пухоедов — зола, «Фронтлайн»." },
+      { t:"Козы/овцы", d:"Прививки: сибирка, пастереллёз. Копыта — стрижка 2 раза в год. Глистогонка осенью и весной." },
+      { t:"Коровы", d:"Вакцинация: ящур, сибирка, бешенство. Обработка от гиподерматоза. Копыта." },
+      { t:"Кролики", d:"Вакцинация: миксоматоз, ВГБК. Дезинфекция клеток." },
+      { t:"Свиньи", d:"Прививки: чума, рожа, ящур. Обработка от паразитов." }
+    ];
+    c.innerHTML = list.map(x => `
+      <div class="accordion">
+        <div class="accordion-head">💉 ${Utils.escape(x.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(x.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  },
+
+  renderProducts(c) {
+    const list = Store.get("livestock_products", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Продукция</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-prod">+ Запись</button>
+      </div>
+      <div class="list" id="prod-list"></div>
+    `;
+    $("#btn-add-prod").addEventListener("click", () => {
+      Modal.open("Продукция", `
+        <div class="field"><label>Что</label><input id="pr-what" placeholder="Яйца / молоко / мясо"></div>
+        <div class="field"><label>Количество</label><input id="pr-qty" placeholder="10 шт / 3 л"></div>
+        <div class="field"><label>Дата</label><input type="date" id="pr-date" value="${Utils.todayISO()}"></div>
+        <button class="btn btn-primary btn-block" id="pr-save">Сохранить</button>
+      `, () => {
+        $("#pr-save").addEventListener("click", () => {
+          const l = Store.get("livestock_products", []);
+          l.push({
+            id: Utils.uid(),
+            what: $("#pr-what").value.trim(),
+            qty: $("#pr-qty").value.trim(),
+            date: $("#pr-date").value
+          });
+          Store.set("livestock_products", l);
+          Modal.close();
+          Toast.show("Сохранено");
+          this.render();
+        });
+      });
+    });
+    renderList("prod-list", list.sort((a,b) => b.date.localeCompare(a.date)), p => `
+      <div class="list-item">
+        <span class="li-icon">🥚</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(p.what)} — ${Utils.escape(p.qty)}</div>
+          <div class="li-sub">${Utils.fmtDate(p.date)}</div>
+        </div>
+        <div class="li-actions"><button class="li-btn" data-del-pr="${p.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-pr]").forEach(b => b.addEventListener("click", () => {
+      Store.set("livestock_products", Store.get("livestock_products", []).filter(x => x.id !== b.dataset.delPr));
+      this.render();
+    }));
+  }
+};
+
+/* ===================================================
+   5. РЕГИСТРАЦИЯ ХУКОВ
+   =================================================== */
+Object.assign(window.ScreenHooks || (window.ScreenHooks = {}), {
+  garden: () => Garden.render(),
+  mushrooms: () => Mushrooms.render(),
+  bees: () => Bees.render(),
+  livestock: () => Livestock.render()
+});
+
+// Экспорт в глобал для быстрых действий
+window.Garden = Garden;
+window.Mushrooms = Mushrooms;
+window.Bees = Bees;
+window.Livestock = Livestock;
+
+</script>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 6 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 6: СТРОЙКА И ИНЖЕНЕРИЯ                   -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. СТРОЙКА
+   =================================================== */
+const Build = {
+  currentTab: "projects",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#build-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+    const addBtn = $("#btn-add-project");
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = "1";
+      addBtn.addEventListener("click", () => this.openAddProject());
+    }
+  },
+
+  renderTab(tab) {
+    const c = $("#build-content");
+    if (!c) return;
+    switch (tab) {
+      case "projects":   this.renderProjects(c); break;
+      case "foundation": this.renderKnowledge(c, "foundation"); break;
+      case "walls":      this.renderKnowledge(c, "walls"); break;
+      case "roof":       this.renderKnowledge(c, "roof"); break;
+      case "stove":      this.renderKnowledge(c, "stove"); break;
+      case "bath":       this.renderKnowledge(c, "bath"); break;
+      case "calc":       this.renderCalc(c); break;
+    }
+  },
+
+  renderProjects(c) {
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Мои проекты</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-project">+ Объект</button>
+      </div>
+      <div class="list" id="build-projects-list"></div>
+    `;
+    $("#btn-add-project").addEventListener("click", () => this.openAddProject());
+    const list = Store.get("build_projects", []);
+    renderList("build-projects-list", list, p => {
+      const days = Utils.daysBetween(p.start, Utils.todayISO());
+      return `
+        <div class="list-item">
+          <span class="li-icon">${p.icon || "🏠"}</span>
+          <div class="li-body">
+            <div class="li-title">${Utils.escape(p.name)}</div>
+            <div class="li-sub">${Utils.escape(p.stage || "начат")} · ${days} дн. · Бюджет: ${Utils.escape(p.budget || "—")}</div>
+          </div>
+          <div class="li-actions"><button class="li-btn" data-del-prj="${p.id}">🗑</button></div>
+        </div>
+      `;
+    });
+    $$("[data-del-prj]").forEach(b => b.addEventListener("click", () => {
+      Store.set("build_projects", Store.get("build_projects", []).filter(x => x.id !== b.dataset.delPrj));
+      this.render();
+    }));
+  },
+
+  openAddProject() {
+    Modal.open("Новый объект", `
+      <div class="field"><label>Название</label><input id="bp-name" placeholder="Баня 4×5"></div>
+      <div class="field"><label>Тип</label>
+        <select id="bp-type">
+          <option>Дом</option><option>Баня</option><option>Сарай</option>
+          <option>Курятник</option><option>Погреб</option><option>Беседка</option>
+          <option>Забор</option><option>Терраса</option><option>Печь</option>
+          <option>Другое</option>
+        </select>
+      </div>
+      <div class="field"><label>Этап</label>
+        <select id="bp-stage">
+          <option>Планирование</option><option>Фундамент</option>
+          <option>Стены</option><option>Крыша</option><option>Отделка</option>
+          <option>Готово</option>
+        </select>
+      </div>
+      <div class="field"><label>Старт</label><input type="date" id="bp-start" value="${Utils.todayISO()}"></div>
+      <div class="field"><label>Бюджет</label><input id="bp-budget" placeholder="150 000 ₽"></div>
+      <div class="field"><label>Заметка</label><textarea id="bp-note"></textarea></div>
+      <button class="btn btn-primary btn-block" id="bp-save">Создать</button>
+    `, () => {
+      $("#bp-save").addEventListener("click", () => {
+        const name = $("#bp-name").value.trim();
+        if (!name) { Toast.show("Введите название"); return; }
+        const icons = { "Дом":"🏠","Баня":"🧖","Сарай":"🏚","Курятник":"🐔","Погреб":"🕳","Беседка":"⛱","Забор":"🚧","Терраса":"🪵","Печь":"🔥","Другое":"🏗" };
+        const type = $("#bp-type").value;
+        const list = Store.get("build_projects", []);
+        list.push({
+          id: Utils.uid(), name, type,
+          icon: icons[type] || "🏗",
+          stage: $("#bp-stage").value,
+          start: $("#bp-start").value,
+          budget: $("#bp-budget").value.trim(),
+          note: $("#bp-note").value.trim()
+        });
+        Store.set("build_projects", list);
+        Modal.close();
+        Toast.show("Объект создан");
+        this.render();
+      });
+    });
+  },
+
+  knowledge: {
+    foundation: [
+      { t:"Ленточный фундамент", d:"Для дома и бани. Глубина ниже промерзания (в средней полосе 1,2–1,5 м). Ширина 40–50 см, арматура Ø12 в 2 пояса. Бетон М300. Опалубка + песчаная подушка 20 см." },
+      { t:"Столбчатый", d:"Для лёгких построек (баня, беседка). Блоки 20×20×40 или кирпич, шаг 1,5–2 м. Подушка щебень+песок. Ростверк связывает столбы." },
+      { t:"Свайно-винтовой", d:"Для торфа, плывуна. Сваи СВС Ø89–108 мм, глубина 1,5–2,5 м. Оголовки, обвязка брусом/швеллером." },
+      { t:"Плита (УШП)", d:"Утеплённая шведская плита — для дома с тёплым полом. Пенополистирол 100–200 мм, арматура Ø10, бетон М350, толщина 100–150 мм." },
+      { t:"Общие правила", d:"⚠ Учитывай УГВ (уровень грунтовых вод), пучинистость, глубину промерзания. Дренаж вокруг, отмостка 1 м. Не экономь на арматуре и марке бетона." }
+    ],
+    walls: [
+      { t:"Профилированный брус", d:"150×150 или 200×200 мм. Усадка 1 год, утеплитель джута/льноватина. Каждый 2-й ряд шканты. Через год — повторная конопатка." },
+      { t:"Оцилиндрованное бревно", d:"Ø200–260 мм. Тёплое, но усадка 1–1,5 года. Мшовый или джутовый межвенцовый утеплитель." },
+      { t:"Каркас (каркасник)", d:"Быстро и дёшево. Стойки 50×150 или 50×200 шаг 60 см. Утеплитель: минвата/эковата. Пароизоляция изнутри, ветрозащита снаружи." },
+      { t:"Газобетон", d:"D400–D500, толщина 300–400 мм. Клей, армирование каждые 3–4 ряда. Отделка — штукатурка или вентфасад." },
+      { t:"Кирпич", d:"Дорого, тяжело, требует мощного фундамента. Толщина 510–640 мм, утеплитель минвата + вентзазор." },
+      { t:"Саман / глина+солома", d:"Экологично, почти бесплатно. Пропорция 1:1 с глиной, добавка 10% извести. Только в сухом климате, обязательна отмостка." },
+      { t:"⚠ Ошибки", d:"Нет ветрозащиты снаружи → мокнет утеплитель. Нет пароизоляции изнутри → конденсат в стене. Неверная перевязка → трещины." }
+    ],
+    roof: [
+      { t:"Стропильная система", d:"Наслонная (до 6–8 м пролёт) или висячая (без внутренних стен). Шаг 60–100 см. Сечение: 50×150 для шага 60 см. Мауэрлат 100×100." },
+      { t:"Угол наклона", d:"Металлочерепица — 14°+; профлист — 12°+; гибкая черепица — 11°+; шифер — 22°+; фальц — 25°+; натуральная черепица — 30°+." },
+      { t:"Пирог кровли", d:"Снизу вверх: пароизоляция → утеплитель 200–250 мм → гидро-ветрозащита → контробрешётка (вентзазор 30–50 мм) → обрешётка → покрытие." },
+      { t:"Снеговая нагрузка", d:"Считай по СП 20.13330. Для средней полосы 180 кг/м². На 1 м² крыши при 30° — примерно 100–150 кг/м². Усиливай стропила, ставь снегозадержатели." },
+      { t:"Водоотвод", d:"Обязателен на доме с фундаментом. Жёлобы Ø120–150 мм, уклон 2–3 мм/м. Отвод 1,5–2 м от стены." },
+      { t:"⚠ Ошибки", d:"Нет вентзазора → гниёт обрешётка. Нет снегозадержателей → лавина на голову. Плохой крепёж → срыв ветром." }
+    ],
+    stove: [
+      { t:"Кирпичная печь", d:"Классика для дома и бани. Красный полнотелый кирпич М150, глина с песком, шамотный кирпич для топки. Фундамент отдельный, не связан со стенами. Раствор: 1:2 или 1:3." },
+      { t:"Металлическая печь (булерьян, Профессор)", d:"Быстрый прогрев, КПД выше. Обязательна разделка: от стены 500 мм или через кирпичную прослойку 250 мм. Огонь по металлу проходит за 3–5 мин." },
+      { t:"Дымоход", d:"Сэндвич Ø150–200 мм, нерж+базальт. Высота над крышей: 0,5 м от конька при расстоянии до 1,5 м; до 10° в сторону при большем удалении. Гильза в кирпичном дымоходе — обязательно." },
+      { t:"Требования", d:"Отступка от сгораемых конструкций: 500 мм кирпич, 1000 мм металл без экрана. Предтопочный лист 500×700 мм. Отступ от пола — 100 мм, или защита 3 мм асбест+жесть." },
+      { t:"⚠ Ошибки", d:"Нет разделки → пожар. Плохая тяга (низкий дымоход, заужение) → дым. Раствор жирный (много глины) → трещины." }
+    ],
+    bath: [
+      { t:"Планировка", d:"Парная 4–6 м², мойка 4–6 м², предбанник 4–8 м². Парная дальше от входа, с печью у глухой стены." },
+      { t:"Материалы", d:"Сруб или каркас. Внутри — липа, осина, кедр (не смоляные!). Пол в мойке — керамогранит или бетон с уклоном к трапу. Полки — липа, осина." },
+      { t:"Вентиляция", d:"Приточно — под печью или у пола. Вытяжка — под потолком у дальней стены. Задвижка для регулировки. Правило: воздух идёт снизу вверх, через парную в мойку." },
+      { t:"Печь", d:"Каменка — кирпич или металл с камнем. Мощность: 1 кВт на 1 м³ парной + запас 30%. Топка — из предбанника или мойки." },
+      { t:"Пирог", d:"Парная: пирог как в доме, но пароизоляция фольга + алюминиевый скотч. Мойка — гидроизоляция пола и стен до 1,5 м." },
+      { t:"⚠ Ошибки", d:"Пластик в парной → запах. Нет вентиляции → грибок. Нет гидроизоляции пола → гниют лаги." }
+    ]
+  },
+
+  renderKnowledge(c, key) {
+    const items = this.knowledge[key] || [];
+    c.innerHTML = items.map(it => `
+      <div class="accordion">
+        <div class="accordion-head">📖 ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  },
+
+  renderCalc(c) {
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">🧱 Калькулятор бетона на ленту</div>
+        <div class="field"><label>Длина ленты (м)</label><input type="number" id="calc-l" value="20"></div>
+        <div class="field"><label>Ширина (м)</label><input type="number" id="calc-w" value="0.4" step="0.05"></div>
+        <div class="field"><label>Высота (м)</label><input type="number" id="calc-h" value="1.5" step="0.1"></div>
+        <button class="btn btn-primary btn-block" id="calc-run">Рассчитать</button>
+        <div id="calc-out" class="mt-12"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🪵 Калькулятор кубатуры дров</div>
+        <div class="field"><label>Поленница: длина (м)</label><input type="number" id="wood-l" value="2"></div>
+        <div class="field"><label>Высота (м)</label><input type="number" id="wood-h" value="1.5"></div>
+        <div class="field"><label>Глубина (м)</label><input type="number" id="wood-d" value="0.6"></div>
+        <button class="btn btn-primary btn-block" id="wood-run">Рассчитать</button>
+        <div id="wood-out" class="mt-12"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Сечение провода по нагрузке (220 В)</div>
+        <div class="field"><label>Мощность (кВт)</label><input type="number" id="wire-p" value="3"></div>
+        <button class="btn btn-primary btn-block" id="wire-run">Подобрать</button>
+        <div id="wire-out" class="mt-12"></div>
+      </div>
+    `;
+
+    $("#calc-run").addEventListener("click", () => {
+      const l = +$("#calc-l").value, w = +$("#calc-w").value, h = +$("#calc-h").value;
+      const v = l * w * h;
+      const cement = Math.round(v * 350);   // кг цемента М400
+      const sand = Math.round(v * 0.5 * 1.6); // тонн песка
+      const gravel = Math.round(v * 0.8 * 1.4); // тонн щебня
+      $("#calc-out").innerHTML = `
+        <div class="card-title">Объём бетона: ${v.toFixed(2)} м³</div>
+        <div class="text-sm">Цемент М400: ~${cement} кг (≈${Math.ceil(cement/50)} мешков)</div>
+        <div class="text-sm">Песок: ~${sand} т</div>
+        <div class="text-sm">Щебень: ~${gravel} т</div>
+        <div class="text-muted text-sm mt-8">Пропорция 1:3:4 по объёму, В/Ц ~0,5</div>
+      `;
+    });
+
+    $("#wood-run").addEventListener("click", () => {
+      const l = +$("#wood-l").value, h = +$("#wood-h").value, d = +$("#wood-d").value;
+      const sklad = l * h * d;
+      const real = sklad * 0.7; // коэффициент полнодревесности для колотых
+      $("#wood-out").innerHTML = `
+        <div class="card-title">Складочный: ${sklad.toFixed(2)} м³</div>
+        <div class="text-sm">Реальный (плотный): ~${real.toFixed(2)} м³</div>
+        <div class="text-muted text-sm mt-8">Коэффициент 0,7 для колотых, 0,6 для круглых</div>
+      `;
+    });
+
+    $("#wire-run").addEventListener("click", () => {
+      const p = +$("#wire-p").value;
+      const a = p * 1000 / 220;
+      let section;
+      if (a < 10) section = "1,5 мм²";
+      else if (a < 16) section = "2,5 мм²";
+      else if (a < 25) section = "4 мм²";
+      else if (a < 32) section = "6 мм²";
+      else if (a < 40) section = "10 мм²";
+      else section = "16 мм² и более (нужен расчёт)";
+      $("#wire-out").innerHTML = `
+        <div class="card-title">Ток: ~${a.toFixed(1)} А</div>
+        <div class="text-sm">Медь: ${section}</div>
+        <div class="text-muted text-sm mt-8">Автомат подбери на 20% больше рабочего тока</div>
+      `;
+    });
+  }
+};
+
+/* ===================================================
+   2. ИНЖЕНЕРИЯ
+   =================================================== */
+const Engineering = {
+  currentTab: "electric",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#eng-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  renderTab(tab) {
+    const c = $("#eng-content");
+    if (!c) return;
+    switch (tab) {
+      case "electric": this.renderElectric(c); break;
+      case "water":    this.renderWater(c); break;
+      case "heat":     this.renderHeat(c); break;
+      case "sewer":    this.renderSewer(c); break;
+      case "net":      this.renderNet(c); break;
+      case "calc":     this.renderCalc(c); break;
+    }
+  },
+
+  renderElectric(c) {
+    const items = [
+      { t:"Ввод и щиток", d:"Ввод: СИП 2×16 или 4×16 мм². Щиток: вводной автомат → УЗО 100 мА → счётчик → реле напряжения → группа УЗО 30 мА + автоматы. Высота установки 1,5–1,8 м от пола." },
+      { t:"Сечение проводов (медь)", d:"1,5 мм² — свет (до 16 А, 3,5 кВт); 2,5 мм² — розетки (до 25 А, 5,5 кВт); 4 мм² — мощные приборы (бойлер, плита); 6 мм² — ввод в дом; 10 мм² — ввод в баню/мастерскую." },
+      { t:"Автоматы", d:"Номинал = рабочий ток × 1,2. B — для освещения и электроники; C — для двигателей, насосов; D — для компрессоров. УЗО 30 мА — на влажные зоны и розетки." },
+      { t:"Заземление", d:"TN-C-S или TT. Контур: 3 штыря Ø16 мм, длина 2–2,5 м, шаг 2 м, соединены полосой 40×4 мм. Сопротивление ≤ 30 Ом (для 380 В — 10 Ом). Молниезащита — отдельная, ≥10 м от контура заземления." },
+      { t:"Солнечная станция", d:"Панели 400 Вт ×N. Инвертор гибридный + АКБ LiFePO4. Контроллер MPPT. Ориентация: юг, угол = широта. Зимой выработка в 5–10 раз ниже летней." },
+      { t:"Генератор", d:"Бензин 3–5 кВт — резерв. Дизель 5–10 кВт — постоянный. Автозапуск через АВР. Хранить топливо в канистре с запасом 20 л на сутки." },
+      { t:"⚠ Пожарная безопасность", d:"Не экономь на автоматах, УЗО, сечении. Каждая линия — своя. Соединения только клеммами, не скрутками. В деревянном доме — металлорукав или гофра." }
+    ];
+    this.renderAccordions(c, items, "⚡");
+  },
+
+  renderWater(c) {
+    const items = [
+      { t:"Колодец vs скважина", d:"Колодец: до 15 м, вода из верховодки, дешевле, но сезонные колебания. Скважина: 20–100 м, чище, стабильнее, дороже. Артезианская — 50+ м, идеальна для дома." },
+      { t:"Насосы", d:"Погружной (в скважину Ø ≥110 мм). Поверхностный — до 8 м глубины. Гидроаккумулятор 50–100 л, реле давления 1,5/3 бара. Расход: 1–2 м³/ч на дом." },
+      { t:"Разводка", d:"Полипропилен или PEX. Труба Ø25–32 мм для магистрали, Ø16–20 мм — на точки. Коллекторная схема — правильнее. Уклон к сливу для зимнего слива." },
+      { t:"Фильтры", d:"Механика 5–100 мкм → уголь → умягчитель → обратный осмос (для питья). Обезжелезиватель — при железе >0,3 мг/л." },
+      { t:"Зимний водопровод", d:"Труба ниже глубины промерзания (1,2–1,5 м) или с греющим кабелем. Обратный клапан у насоса. При длительном отъезде — сливать систему." },
+      { t:"Полив автоматический", d:"Капельный полив: магистраль Ø16, капельницы каждые 30 см. Таймер или контроллер по влажности. Экономия воды в 2–3 раза." }
+    ];
+    this.renderAccordions(c, items, "💧");
+  },
+
+  renderHeat(c) {
+    const items = [
+      { t:"Расчёт мощности", d:"Формула: 1 кВт на 10 м² при высоте 2,5 м и средней теплоизоляции. Для дома 100 м² — 10–12 кВт. +20% запас на морозы и ГВС." },
+      { t:"Твёрдотопливный котёл", d:"Дрова — 1 кг даёт ~4 кВт·ч. Уголь — 8 кВт·ч. Расход на дом 100 м²: ~15–20 м³ дров зиму. Буферная ёмкость 1000–1500 л сглаживает пики." },
+      { t:"Газовый котёл", d:"Настенный 24 кВт. Расход природного газа: ~1,1 м³/ч. Магистральный газ — 6–8 ₽/м³. Баллонный — дороже в 3–4 раза. Газгольдер 2700 л хватает на 6–10 мес." },
+      { t:"Электроотопление", d:"ТЭН-котёл 1 кВт = 1 кВт·ч. Дорого. Электродный — 20% экономнее. Тепловой насос воздух-вода: COP 3–4, окупается за 6–8 лет. Инфракрасные панели — для локального обогрева." },
+      { t:"Тёплый пол", d:"Водяной — от котла, труба 16–20 мм, шаг 150–300 мм, стяжка 50–70 мм. Расход трубы: 5–7 м/м². Мощность 60–80 Вт/м². Пирог: утеплитель → труба → стяжка → покрытие." },
+      { t:"Радиаторы", d:"Биметалл — 180–200 Вт/секция; алюминий — 190 Вт; чугун — 120–150 Вт. На комнату 15 м² — 8–9 секций биметалла. Ставить под окно, регулировочные краны на вход и выход." }
+    ];
+    this.renderAccordions(c, items, "🔥");
+  },
+
+  renderSewer(c) {
+    const items = [
+      { t:"Септик", d:"Объём = 3×суточный сброс. Для семьи 4 чел. — 6–8 м³. Три камеры: приёмная → анаэробная → аэробная. Отвод в дренажное поле или колодец." },
+      { t:"Выгребная яма", d:"Герметичная (бетон, пластик). Объём 4–6 м³. Откачка ассенизатором 2–4 раза в год. 3000–5000 ₽ за раз. Для дачи на выходные." },
+      { t:"Биотуалет / люфт-клозет", d:"Летний вариант без воды. Люфт-клозет — с выгребом и вентиляцией, можно зимой." },
+      { t:"Дренажное поле", d:"Для септика. Трубы Ø110 с перфорацией, в щебне, длина 10–30 м в зависимости от грунта. Нельзя: при УГВ <1 м, на глине." },
+      { t:"Вентиляция стояка", d:"Обязательна! Фановый стояк Ø110 мм выше крыши на 0,5 м. Без него — запах в доме и срыв гидрозатворов." }
+    ];
+    this.renderAccordions(c, items, "🚽");
+  },
+
+  renderNet(c) {
+    const items = [
+      { t:"Интернет в деревне", d:"4G-модем + антенна (MIMO) → Wi-Fi роутер. Усиление: панельная антенна 15–20 dBi на мачте 6–10 м. Starlink — если бюджет позволяет." },
+      { t:"Рации", d:"LPD/PMR 433/446 МГц — 5–10 км в лесу. Для дальних связей — KB (КВ) с антенной. Семейный комплект: 4 рации + зарядная станция." },
+      { t:"Резерв при отключении", d:"ИБП 1–3 кВт·ч на роутер+свет. Генератор для длительных. Powerbank 20 Ач для телефонов." },
+      { t:"Видеонаблюдение", d:"IP-камеры PoE, регистратор локально. Ключевые точки: въезд, двор, склад, пасека." }
+    ];
+    this.renderAccordions(c, items, "📡");
+  },
+
+  renderAccordions(c, items, emoji) {
+    c.innerHTML = items.map(it => `
+      <div class="accordion">
+        <div class="accordion-head">${emoji} ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  },
+
+  renderCalc(c) {
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">💧 Объём септика</div>
+        <div class="field"><label>Человек</label><input type="number" id="sep-p" value="4"></div>
+        <div class="field"><label>Расход, л/чел./сутки</label><input type="number" id="sep-r" value="150"></div>
+        <button class="btn btn-primary btn-block" id="sep-run">Рассчитать</button>
+        <div id="sep-out" class="mt-12"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔥 Расход дров на зиму</div>
+        <div class="field"><label>Площадь дома, м²</label><input type="number" id="heat-s" value="100"></div>
+        <button class="btn btn-primary btn-block" id="heat-run">Рассчитать</button>
+        <div id="heat-out" class="mt-12"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Мощность котла</div>
+        <div class="field"><label>Площадь, м²</label><input type="number" id="boil-s" value="100"></div>
+        <div class="field"><label>Высота потолка, м</label><input type="number" id="boil-h" value="2.7" step="0.1"></div>
+        <button class="btn btn-primary btn-block" id="boil-run">Рассчитать</button>
+        <div id="boil-out" class="mt-12"></div>
+      </div>
+    `;
+    $("#sep-run").addEventListener("click", () => {
+      const p = +$("#sep-p").value, r = +$("#sep-r").value;
+      const daily = p * r / 1000;
+      const total = daily * 3;
+      $("#sep-out").innerHTML = `
+        <div class="card-title">Объём: ${total.toFixed(2)} м³ (минимум)</div>
+        <div class="text-sm">Суточный сброс: ${daily.toFixed(2)} м³</div>
+        <div class="text-muted text-sm mt-8">Бери с запасом 20% на пики</div>
+      `;
+    });
+    $("#heat-run").addEventListener("click", () => {
+      const s = +$("#heat-s").value;
+      const kvt = s / 10;
+      const m3 = kvt * 2; // примерно 2 м³ дров на 1 кВт сезон в средней полосе
+      $("#heat-out").innerHTML = `
+        <div class="card-title">Дров: ~${m3.toFixed(1)} м³ на зиму</div>
+        <div class="text-sm">Мощность отопления: ${kvt} кВт</div>
+        <div class="text-muted text-sm mt-8">Для севера — умножить на 1,5; для юга — на 0,7</div>
+      `;
+    });
+    $("#boil-run").addEventListener("click", () => {
+      const s = +$("#boil-s").value, h = +$("#boil-h").value;
+      const kvt = s * h / 25 + 2; // 1 кВт на 25 м³ + запас на ГВС
+      $("#boil-out").innerHTML = `
+        <div class="card-title">Котёл: ${kvt.toFixed(1)} кВт</div>
+        <div class="text-muted text-sm mt-8">+20% запас на морозы — ${(kvt*1.2).toFixed(1)} кВт</div>
+      `;
+    });
+  }
+};
+
+/* ===================================================
+   3. РЕГИСТРАЦИЯ ХУКОВ
+   =================================================== */
+Object.assign(window.ScreenHooks || (window.ScreenHooks = {}), {
+  build: () => Build.render(),
+  eng: () => Engineering.render()
+});
+
+window.Build = Build;
+window.Engineering = Engineering;
+
+</script>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 7 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 7: ДОБЫЧА, РЕМЕСЛО, ЭКОНОМИКА           -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. ДОБЫЧА РЕСУРСОВ
+   =================================================== */
+const Resources = {
+  currentTab: "wood",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#res-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  renderTab(tab) {
+    const c = $("#res-content");
+    if (!c) return;
+    switch (tab) {
+      case "wood":   this.renderWood(c); break;
+      case "water":  this.renderWater(c); break;
+      case "stone":  this.renderStone(c); break;
+      case "clay":   this.renderClay(c); break;
+      case "wild":   this.renderWild(c); break;
+      case "hunt":   this.renderHunt(c); break;
+    }
+  },
+
+  renderWood(c) {
+    const items = [
+      { t:"Валка дерева", d:"Определи направление наклона. Подпил (1/4) со стороны падения, затем пропил сзади выше на 3–5 см. Клин или гидравлика. ⚠ Не пили на ветру, отойди на 5 м при падении, кричи «Идёт!»" },
+      { t:"Раскряжёвка", d:"Пили на чурбаки по 40–50 см. Крупные — на брус/доску. Держи пилу ровно, не зажимай. Обрубай сучки заподлицо." },
+      { t:"Породы и теплотворность (кВт·ч/м³)", d:"Дуб — 2100, берёза — 1900, ясень — 1900, сосна — 1500, ель — 1400, осина — 1300, ольха — 1200, липа — 1100. Осина хороша для бани (легко, без сажи)." },
+      { t:"Сушка дров", d:"Пилить — весна, колоть — сразу, укладывать под навес. Срок сушки: 1 год минимум, идеал — 2. Влажность для топки — 15–20%. Мокрые дрова — сажа и потеря 30% тепла." },
+      { t:"Укладка поленницы", d:"Поленница на подставках 10–15 см над землёй. Юг или восток — продув. Торцы наружу. Кора сверху. Не укрывай плёнкой — задохнётся." },
+      { t:"Пиломатериал — расчёт", d:"Объём бревна (м³) = π × r² × L. Выход доски ~55% от объёма. Пример: бревно Ø30 см, 4 м = 0,283 м³. Выйдет ~0,15 м³ доски." },
+      { t:"Правила", d:"⚠ Нельзя рубить без разрешения в защитных лесах, водоохранных зонах, у ЛЭП. Для ЛПХ — до 5 м³ в год бесплатно в некоторых регионах. Штраф за незаконную рубку — до 500 тыс. ₽." }
+    ];
+    this.renderAccordions(c, items, "🪵");
+  },
+
+  renderWater(c) {
+    const items = [
+      { t:"Колодец", d:"Копать на возвышении, ≥10 м от септика, ≥20 м от кладбищ/ферм. Кольца КС10-9 (Ø1 м, высота 0,9 м). Глубина — до водоносного слоя. Дно — щебень 20 см. Гидроизоляция швов, глиняный замок снаружи." },
+      { t:"Скважина", d:"Бурение: шнековое, роторное, гидробур. Обсадка: пластик Ø110–160 мм или сталь. Артезианская 50+ м, вода отличная. Песковая 15–30 м, зависит от сезона." },
+      { t:"Родник", d:"Отбирать на возвышении, каптаж: глиняный замок, гравий/песок, бетонный ящик с отстойником. Проверять воду в лаборатории!" },
+      { t:"Дождевая вода", d:"Для полива — бочки 200 л под водосток. Фильтр от листвы, кран у дна, уклон к дну. Первый дождь после жары — сливать. Нельзя пить без обработки." },
+      { t:"Талая вода", d:"Собирать снег только с деревьев, не с земли (там песок, соль). Растапливать при +2...+5°C. Пить в течение суток." },
+      { t:"Обеззараживание", d:"Кипятить 10 мин. Хлор — 2 таблетки «Аквасан» на 1 л. Фильтр туристический — 0,2 мкм. УФ — для дома." }
+    ];
+    this.renderAccordions(c, items, "💧");
+  },
+
+  renderStone(c) {
+    const items = [
+      { t:"Дикий камень (песчаник, гранит)", d:"Собирать на полях, карьерах (с разрешения!). Для фундамента, отмостки, декора. Гранит — дорогой, твёрдый; песчаник — легче, слоистый." },
+      { t:"Валуны", d:"Для ландшафта, дорожек. Тяжёлые — перемещать на листе, по брёвнам. Не брать на охраняемых территориях." },
+      { t:"Щебень", d:"Известняк, гранит, вторичный (бетон). Франции 5–20 мм — основание, 20–40 — дренаж, 40–70 — отсыпка дороги." },
+      { t:"Песок", d:"Песок речной — для бетона, карьерный — для кладки (промыть). Проверка: сжать в кулаке, если слипается — есть глина, промывать." },
+      { t:"Правила", d:"⚠ Нельзя: в нацпарках, на берегах рек (водоохранка), на чужих участках. Для своего участка — свободно. Для 1–2 кузовов — обычно ничего, но уточняй." }
+    ];
+    this.renderAccordions(c, items, "🪨");
+  },
+
+  renderClay(c) {
+    const items = [
+      { t:"Глина", d:"Копать на глубине 1–3 м. Определить: скатать колбаску, согнуть — если не трескается, жирная. Для кладочного раствора, печи, штукатурки, гончарки, кирпича-сырца." },
+      { t:"Торф", d:"Верховой (рыжий, кислый) — для мульчи, субстрата. Низинный (чёрный) — удобрение. Добывать с разрешения! На своём участке — свободно. Просушить на воздухе, использовать с золой и известью." },
+      { t:"Сапропель (озёрный ил)", d:"Ценный удобритель. Добыча со дна, сушка. Применять: 2–5 кг/м² под перекопку." },
+      { t:"Дёрн", d:"Для газона, укрепления склонов. Резать 30×30 см, толщина 5–8 см. Укладывать в течение суток." },
+      { t:"Мох, кора, хвоя", d:"Мульча, утепление. Мох-сфагнум — антисептик (для хранения корнеплодов). Кора сосны — мульча и топливо. Хвоя — витамины для кур, подкисление почвы." }
+    ];
+    this.renderAccordions(c, items, "🧱");
+  },
+
+  renderWild(c) {
+    const items = [
+      { t:"Берёзовый сок", d:"Март-апрель, до распускания листьев. Сверлить 3–5 см вглубь, Ø 1 см. Собрать 2–5 л с дерева. Забить колышек после. Пить свежим или консервировать." },
+      { t:"Иван-чай (кипрей)", d:"Июнь-август, до цветения. Собирать листья. Сушка: завялить 12 ч → скрутить → ферментировать 24–48 ч → высушить. Сладкий, без кофеина." },
+      { t:"Травы", d:"Зверобой, душица, чабрец, ромашка, мята, тысячелистник — собирать в сухую погоду утром, сушить в тени. Хранить в бумажных пакетах." },
+      { t:"Ягоды", d:"Земляника — июнь; черника — июль; малина, смородина — июль; брусника — сентябрь; клюква — октябрь; облепиха — сентябрь-октябрь; рябина — после заморозков." },
+      { t:"Орехи", d:"Лещина — август-сентябрь; кедр — сентябрь-октябрь; грецкий — сентябрь. Сушка при 30–40°C." },
+      { t:"Правила сбора", d:"⚠ Травы — не у дорог, не у ЛЭП. Грибы — не вблизи промзон. Ягоды — не в местах обработки полей. Лекарственные растения — 1/3 популяции, не вырывать с корнем." }
+    ];
+    this.renderAccordions(c, items, "🌿");
+  },
+
+  renderHunt(c) {
+    const items = [
+      { t:"Охотничий билет", d:"Обязателен. Через Госуслуги → охотбилет единого федерального образца. Без него — штраф." },
+      { t:"Разрешение на оружие", d:"Гладкоствол — с 18 лет, 5 лет стажа без нарушений. Нарезное — с 21 года, 5 лет владения гладкостволом. Медкомиссия, курсы, сейф." },
+      { t:"Сроки охоты", d:"Утка — с 3-й субботы августа (юг позже). Заяц — октябрь-январь. Кабан — июнь-январь (по регионам). Лось — сентябрь-декабрь. Уточняй в своём регионе." },
+      { t:"Разделка", d:"Обескровить сразу, вскрыть, охладить. Крупная дичь — подвесить, снять шкуру, выдержать 5–7 дней при +2...+5°C. Мясо без выдержки — жёсткое." },
+      { t:"Рыбалка", d:"Летом — удочка, спиннинг, фидер, жерлица. Зимой — балансир, мормышка, жерлицы. Лицензия — для ценных пород (лосось, судак в некоторых регионах). Запреты — нерест (апрель-июнь)." },
+      { t:"Снасти из подручного", d:"Крючок из гвоздя, леска из нитей, поплавок из пробки. Сети — только с лицензией! Сетью нелегально ловить — штраф и уголовка." },
+      { t:"Снаряжение минимум", d:"Нож, спички в герметике, аптечка, компас, карта, фонарь, дождевик, вода 1 л, еда на сутки, свисток." }
+    ];
+    this.renderAccordions(c, items, "🎣");
+  },
+
+  renderAccordions(c, items, emoji) {
+    c.innerHTML = items.map(it => `
+      <div class="accordion">
+        <div class="accordion-head">${emoji} ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  }
+};
+
+/* ===================================================
+   2. РЕМЕСЛО
+   =================================================== */
+const Crafts = {
+  currentTab: "wood",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#craft-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  renderTab(tab) {
+    const c = $("#craft-content");
+    if (!c) return;
+    const data = {
+      wood: [
+        { t:"Инструмент минимум", d:"Пила, рубанок, стамески 6–20 мм, киянка, шуруповёрт, струбцины, угольник, карандаш, наждачка. Электро: циркулярка, лобзик, шлифмашинка, фрезер." },
+        { t:"Соединения", d:"Вполдерева, шип-паз, ласточкин хвост, на шкантах, на саморезах (лучше в предварительное сверло). Клей ПВА D3 для улицы." },
+        { t:"Отделка", d:"Шлифовка 80→120→180→220. Масло, воск, лак (для улицы — яхтный). Морилка — для цвета." },
+        { t:"Проекты", d:"Полки, стол, лавка, табурет — первые. Затем рама, дверь, окно. Навес, курятник." }
+      ],
+      metal: [
+        { t:"Наковальня + горн", d:"Горн на угле/газе, наковальня 50–100 кг. Молотки 1–3 кг, клещи, зубила, напильники. Защита: очки, фартук, перчатки." },
+        { t:"Ковка", d:"Нагрев до 800–1200°C (жёлто-оранжевый). Не перегревай до белого — сгорит сталь. Отпуск при 200–300°C после закалки." },
+        { t:"Сварка", d:"Инвертор 160–200 А, электрод МР-3 (для стали). Маска-хамелеон. Подготовка: зачистить, прихватить, варить. После — отбить шлак, проверить." },
+        { t:"Что делать", d:"Подковы, гвозди, решётки, крючки, кочерга, вертел, подсвечники." }
+      ],
+      food: [
+        { t:"Сыроварение", d:"Молоко пастеризовать 63°C/30 мин или 72°C/15 сек. Закваска по типу (мезо/термо). Сычуг (фермент) — 1/4 ч.л. на 10 л. Свернуть за 30–60 мин. Резать на кубики, нагреть, слить сыворотку, спрессовать. Солить в рассоле 20% или в зерне." },
+        { t:"Виды сыров", d:"Брынза — не варить, 3–4 дня в рассоле. Качотта — 1–2 мес. Гауда — 2–6 мес. Моцарелла — тянуть в горячей воде. Пармезан — 12+ мес." },
+        { t:"Колбасы", d:"Кишки свиные/бараньи — вымачивать, промывать. Фарш: 70% мясо + 30% жира. Соль 2% от массы, нитрит 0,5% (для сыровяла). Варёные — варить при 80°C до 70°C внутри." },
+        { t:"Копчение", d:"Холодное 20–25°C (сутки) — для сыровяла, рыбы. Горячее 60–90°C (2–6 ч) — для мяса, рыбы. Щепа: ольха, яблоня, вишня. Не хвоя!" }
+      ],
+      drinks: [
+        { t:"Пиво", d:"Солод 4 кг на 20 л. Затирание 65°C/60 мин. Кипячение 60 мин с хмелем. Брожение 7–10 дней при 18–22°C. Карбонизация 8 г/л сахара." },
+        { t:"Вино", d:"Виноград/ягоды. Сусло с сахаром 200 г/л, дрожжи винные. Брожение 7–14 дней. Снятие с осадка 2–3 раза. Выдержка 3–12 мес." },
+        { t:"Квас", d:"Хлеб ржаной 500 г + вода 3 л + сахар 100 г + дрожжи 5 г. 12 ч в тепле. Процедить, добавить изюм, охладить." },
+        { t:"Самогон (⚠ законно только для себя)", d:"Законно для личного потребления без продажи. Брага: сахар 1 кг + вода 4 л + дрожжи 100 г. Перегон 2 раза с отбором голов/хвостов. Не продавать!" }
+      ],
+      soap: [
+        { t:"Мыло с нуля", d:"⚠ Щёлочь опасна! Очки, перчатки. Рецепт: 100 г NaOH + 250 г воды + 700 г масла (оливка/кокос/подсолнечник). Смешать при 40°C, следить за следом. В форму, 24–48 ч, резать, сушить 4 недели." },
+        { t:"Мыло из обмылков", d:"Обмылки + горячая вода + молоко/мёд/масло. Расплавить, в форму. Проще и безопаснее." },
+        { t:"Свечи", d:"Пчелиный воск плавится при 65°C. Фитиль — хлопок, пропитать воском. Форма — силикон. Заливать 2 раза (усадка)." },
+        { t:"Из воска ещё", d:"Мастика для мебели, крем для обуви, вощина, мазь с травами." }
+      ]
+    };
+    const items = data[tab] || [];
+    const icons = { wood: "🪚", metal: "🔨", food: "🧀", drinks: "🍺", soap: "🧼" };
+    c.innerHTML = items.map(it => `
+      <div class="accordion">
+        <div class="accordion-head">${icons[tab] || "🔨"} ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+        <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+      </div>
+    `).join("");
+    bindAccordions(c);
+  }
+};
+
+/* ===================================================
+   3. ЭКОНОМИКА
+   =================================================== */
+const Economy = {
+  currentTab: "overview",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#eco-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  renderTab(tab) {
+    const c = $("#eco-content");
+    if (!c) return;
+    switch (tab) {
+      case "overview": this.renderOverview(c); break;
+      case "income":   this.renderTx(c, "income"); break;
+      case "expense":  this.renderTx(c, "expense"); break;
+      case "stock":    this.renderStock(c); break;
+      case "cost":     this.renderCost(c); break;
+    }
+  },
+
+  renderOverview(c) {
+    const tx = Store.get("economy_tx", []);
+    const income = tx.filter(t => t.type === "income").reduce((s, t) => s + (+t.amount || 0), 0);
+    const expense = tx.filter(t => t.type === "expense").reduce((s, t) => s + (+t.amount || 0), 0);
+    const balance = income - expense;
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">💰 Баланс</div>
+        <div style="font-size:36px;font-weight:800;color:${balance >= 0 ? 'var(--green-700)' : 'var(--danger)'}">${balance.toFixed(0)} ₽</div>
+        <div class="divider"></div>
+        <div class="row between">
+          <div><div class="text-muted text-sm">Доходы</div><div style="font-weight:700;color:var(--green-700)">+${income.toFixed(0)} ₽</div></div>
+          <div style="text-align:right"><div class="text-muted text-sm">Расходы</div><div style="font-weight:700;color:var(--danger)">−${expense.toFixed(0)} ₽</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 Последние операции</div>
+        <div class="list" id="eco-recent"></div>
+      </div>
+    `;
+    const recent = tx.slice().sort((a,b) => (b.date||"").localeCompare(a.date||"")).slice(0, 10);
+    renderList("eco-recent", recent, t => `
+      <div class="list-item">
+        <span class="li-icon">${t.type === "income" ? "💵" : "💸"}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(t.category || "")}</div>
+          <div class="li-sub">${Utils.fmtDate(t.date)}${t.note ? " · " + Utils.escape(t.note) : ""}</div>
+        </div>
+        <div style="font-weight:700;color:${t.type === "income" ? 'var(--green-700)' : 'var(--danger)'}">
+          ${t.type === "income" ? "+" : "−"}${(+t.amount || 0).toFixed(0)} ₽
+        </div>
+      </div>
+    `);
+  },
+
+  renderTx(c, type) {
+    const list = Store.get("economy_tx", []).filter(t => t.type === type);
+    const total = list.reduce((s, t) => s + (+t.amount || 0), 0);
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">${type === "income" ? "💵 Доходы" : "💸 Расходы"} — ${total.toFixed(0)} ₽</div>
+      </div>
+      <div class="row between mb-12">
+        <span class="text-muted">${list.length} операций</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-tx">+ Добавить</button>
+      </div>
+      <div class="list" id="tx-list"></div>
+    `;
+    $("#btn-add-tx").addEventListener("click", () => this.openAddTx(type));
+    renderList("tx-list", list.sort((a,b) => (b.date||"").localeCompare(a.date||"")), t => `
+      <div class="list-item">
+        <span class="li-icon">${type === "income" ? "💵" : "💸"}</span>
+        <div class="li-body">
+          <div class="li-title">${Utils.escape(t.category || "")}</div>
+          <div class="li-sub">${Utils.fmtDate(t.date)}${t.note ? " · " + Utils.escape(t.note) : ""}</div>
+        </div>
+        <div style="font-weight:700">${(+t.amount || 0).toFixed(0)} ₽</div>
+        <div class="li-actions"><button class="li-btn" data-del-tx="${t.id}">🗑</button></div>
+      </div>
+    `);
+    $$("[data-del-tx]").forEach(b => b.addEventListener("click", () => {
+      Store.set("economy_tx", Store.get("economy_tx", []).filter(x => x.id !== b.dataset.delTx));
+      this.render();
+    }));
+  },
+
+  openAddTx(type) {
+    const cats = type === "income"
+      ? ["Мёд","Яйца","Молоко","Мясо","Овощи","Фрукты","Грибы","Ягоды","Сыры","Прочее"]
+      : ["Корма","Удобрения","Семена","Топливо","Ветпрепараты","Инструмент","Стройматериалы","Электричество","Прочее"];
+    Modal.open(type === "income" ? "Новый доход" : "Новый расход", `
+      <div class="field"><label>Категория</label>
+        <select id="tx-cat">${cats.map(c => `<option>${c}</option>`).join("")}</select>
+      </div>
+      <div class="field"><label>Сумма, ₽</label><input type="number" id="tx-amount" placeholder="1500"></div>
+      <div class="field"><label>Дата</label><input type="date" id="tx-date" value="${Utils.todayISO()}"></div>
+      <div class="field"><label>Заметка</label><textarea id="tx-note"></textarea></div>
+      <button class="btn btn-primary btn-block" id="tx-save">Сохранить</button>
+    `, () => {
+      $("#tx-save").addEventListener("click", () => {
+        const amount = +$("#tx-amount").value;
+        if (!amount) { Toast.show("Введите сумму"); return; }
+        const l = Store.get("economy_tx", []);
+        l.push({
+          id: Utils.uid(), type,
+          category: $("#tx-cat").value,
+          amount,
+          date: $("#tx-date").value,
+          note: $("#tx-note").value.trim()
+        });
+        Store.set("economy_tx", l);
+        Modal.close();
+        Toast.show("Сохранено");
+        this.render();
+      });
+    });
+  },
+
+  renderStock(c) {
+    const list = Store.get("economy_stock", []);
+    c.innerHTML = `
+      <div class="row between mb-12">
+        <span class="text-muted">Что на складе</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-stock">+ Добавить</button>
+      </div>
+      <div class="list" id="stock-list"></div>
+    `;
+    $("#btn-add-stock").addEventListener("click", () => {
+      Modal.open("Добавить на склад", `
+        <div class="field"><label>Название</label><input id="st-name" placeholder="Мёд липовый"></div>
+        <div class="field"><label>Количество</label><input id="st-qty" placeholder="20 кг"></div>
+        <div class="field"><label>Срок годности</label><input type="date" id="st-exp"></div>
+        <div class="field"><label>Место</label><input id="st-place" placeholder="Погреб / шкаф"></div>
+        <button class="btn btn-primary btn-block" id="st-save">Сохранить</button>
+      `, () => {
+        $("#st-save").addEventListener("click", () => {
+          const name = $("#st-name").value.trim();
+          if (!name) { Toast.show("Введите название"); return; }
+          const l = Store.get("economy_stock", []);
+          l.push({
+            id: Utils.uid(), name,
+            qty: $("#st-qty").value.trim(),
+            exp: $("#st-exp").value,
+            place: $("#st-place").value.trim()
+          });
+          Store.set("economy_stock", l);
+          Modal.close();
+          Toast.show("Сохранено");
+          this.render();
+        });
+      });
+    });
+    renderList("stock-list", list, s => {
+      const days = s.exp ? Utils.daysBetween(Utils.todayISO(), s.exp) : null;
+      const warn = days !== null && days < 30 ? " · ⚠ " + (days < 0 ? "просрочено" : days + " дн.") : "";
+      return `
+        <div class="list-item">
+          <span class="li-icon">📦</span>
+          <div class="li-body">
+            <div class="li-title">${Utils.escape(s.name)} — ${Utils.escape(s.qty || "")}</div>
+            <div class="li-sub">${Utils.escape(s.place || "")}${s.exp ? " · до " + Utils.fmtDate(s.exp) : ""}${warn}</div>
+          </div>
+          <div class="li-actions"><button class="li-btn" data-del-st="${s.id}">🗑</button></div>
+        </div>
+      `;
+    });
+    $$("[data-del-st]").forEach(b => b.addEventListener("click", () => {
+      Store.set("economy_stock", Store.get("economy_stock", []).filter(x => x.id !== b.dataset.delSt));
+      this.render();
+    }));
+  },
+
+  renderCost(c) {
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-title">🧮 Калькулятор себестоимости</div>
+        <div class="field"><label>Продукт</label><input id="cs-name" placeholder="Яйцо"></div>
+        <div class="field"><label>Затраты за период, ₽</label><input type="number" id="cs-cost" placeholder="3000"></div>
+        <div class="field"><label>Получено, шт/кг/л</label><input type="number" id="cs-qty" placeholder="100"></div>
+        <button class="btn btn-primary btn-block" id="cs-run">Рассчитать</button>
+        <div id="cs-out" class="mt-12"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Примеры расчётов</div>
+        <div class="text-sm">🥚 Яйцо: корм 4 кг/мес × 40 ₽ + прочее = ~200 ₽ → 25 яиц = 8 ₽/шт</div>
+        <div class="text-sm mt-8">🍯 Мёд: сахар 15 кг + вощина + препараты = 3000 ₽ → 30 кг = 100 ₽/кг</div>
+        <div class="text-sm mt-8">🥔 Картофель: семена + удобрения + обработки = 5000 ₽ → 300 кг = 17 ₽/кг</div>
+      </div>
+    `;
+    $("#cs-run").addEventListener("click", () => {
+      const name = $("#cs-name").value.trim() || "продукт";
+      const cost = +$("#cs-cost").value;
+      const qty = +$("#cs-qty").value;
+      if (!cost || !qty) { Toast.show("Заполните все поля"); return; }
+      const unit = cost / qty;
+      $("#cs-out").innerHTML = `
+        <div class="card-title">Себестоимость: ${unit.toFixed(2)} ₽ / ед.</div>
+        <div class="text-muted text-sm mt-8">${name}: ${cost} ₽ ÷ ${qty} = ${unit.toFixed(2)} ₽</div>
+      `;
+    });
+  }
+};
+
+/* ===================================================
+   4. РЕГИСТРАЦИЯ ХУКОВ
+   =================================================== */
+Object.assign(window.ScreenHooks || (window.ScreenHooks = {}), {
+  resources: () => Resources.render(),
+  crafts: () => Crafts.render(),
+  economy: () => Economy.render()
+});
+
+window.Resources = Resources;
+window.Crafts = Crafts;
+window.Economy = Economy;
+
+</script>
+<!-- ДАЛЬШЕ ИДЁТ ЧАСТЬ 8 -->
+  <!-- ============================================= -->
+<!-- ЧАСТЬ 8: SOS, ЗНАНИЯ, PWA, ИНИЦИАЛИЗАЦИЯ      -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* ===================================================
+   1. ЭКСТРЕННЫЙ РЕЖИМ
+   =================================================== */
+const Emergency = {
+  currentTab: "fire",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#sos-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  data: {
+    fire: {
+      emoji: "🔥",
+      items: [
+        { t:"Если горит внутри дома", d:"1. Крикни «Пожар!» — разбуди всех. 2. Выведи детей и пожилых в первую очередь. 3. Закрой окна/двери в комнате пожара, если есть 30 сек. 4. Звони 101 или 112. 5. Не туши водой: масло, электрику. 6. Выходи ползком — дым убивает за 2 минуты." },
+        { t:"Если горит снаружи (трава, сарай)", d:"1. Оцени направление ветра. 2. Мокрая ткань на лицо. 3. Не беги против огня. 4. Окоси траву вокруг, убери дрова. 5. Туши водой из шланга/ведёр, сбивай пламя мокрой тканью, забрасывай землёй. 6. Звони 101." },
+        { t:"Если загорелась печь/дымоход", d:"1. Прекрати топку, закрой поддувало и заслонку. 2. НЕ заливай водой — кирпич лопнет. 3. Насыпь песок/соль в топку. 4. Если дымоход горит — вызови 101, накрывай крышу мокрым одеялом, но НЕ залезай на крышу." },
+        { t:"Профилактика", d:"Перед топкой: предтопочный лист, не сушить вещи у печи. Провода: не скрутки. Розетки: не перегружать. Огнетушитель 5 л — на выходе из дома и в бане. Дымовые датчики — в каждой комнате (500 ₽ спасает жизнь)." }
+      ]
+    },
+    power: {
+      emoji: "💡",
+      items: [
+        { t:"Первые 5 минут", d:"1. Проверь у соседей — если у всех, это сеть. 2. Позвони в Энергосбыт: 8-800-... 3. Отключи мощные приборы (бойлер, плита) — при скачке сгорят. 4. Достань фонарь — не жги свечу в доме." },
+        { t:"Если надолго (несколько часов)", d:"1. Не открывай холодильник — держит холод 4–6 ч. 2. Заряжай телефоны от повербанка. 3. Если зимой — печь/камин, или закрой одну комнату для тепла. 4. Проверь автономку котла — в баке дрова/газ." },
+        { t:"Если опасно (провод упал)", d:"⚠ Не подходи ближе 8 метров! Позвони 112, обозначь место яркой тканью. Не туши водой, если искрит." },
+        { t:"Автономия", d:"Генератор 3–5 кВт + канистра 20 л = сутки. ИБП на роутер, светодиодные фонари, пауэрбанки, свечи, керосиновая лампа. Заряженные АКБ шуруповёрта — тоже свет." }
+      ]
+    },
+    flood: {
+      emoji: "🌊",
+      items: [
+        { t:"Перед паводком", d:"Убери ценные вещи наверх (чердак, 2 этаж). Документы — в гермопакет. Отключи электричество в подвале. Откачай септик, если возможно. Собери тревожный рюкзак." },
+        { t:"Во время", d:"1. Не ходи по воде — ямы, ток. 2. Не ешь подмоченные продукты. 3. Пить только кипячёную/бутилированную. 4. Если уровень растёт быстро — эвакуируйся сам. 5. Возьми документы, деньги, лекарства, зарядку." },
+        { t:"После", d:"1. Не включай электричество до просушки. 2. Продезинфицируй всё хлоркой. 3. Выкачай воду из погреба, просуши. 4. Проверь фундамент. 5. Вакцинация от столбняка/гепатита — если мокрые раны." }
+      ]
+    },
+    injury: {
+      emoji: "🩹",
+      items: [
+        { t:"Аптечка минимум", d:"Бинты, пластыри, антисептик (хлоргексидин), жгут, ножницы, перчатки, обезболивающее, активированный уголь, сорбенты, жаропонижающее, противоаллергенное (Супрастин), кровоостанавливающее (Этамзилат), сода/соль для растворов." },
+        { t:"Кровотечение", d:"Прямое давление на рану. Если артериальное (фонтан) — жгут на 5 см выше раны, запиши время. Максимум 1,5 ч летом, 1 ч зимой. Вызови 103." },
+        { t:"Перелом", d:"Обездвижить — шина из веток/доски. Не вправляй! Холод на 20 мин. Обезболить. При открытом — накрыть рану чистой тканью, не мыть." },
+        { t:"Ожог", d:"1. Вода комнатной температуры 15–20 мин. 2. Не мазать маслом! 3. Стерильная повязка. 4. При большой площади — 103. Химический — смывать 30 мин." },
+        { t:"Обморок", d:"Уложить, ноги выше головы. Расстегнуть одежду, воздух. Нашатырь к носу. Если не дышит — сердечно-лёгочная реанимация: 100 нажатий/мин, глубина 5–6 см, 30 нажатий : 2 вдоха." }
+      ]
+    },
+    bite: {
+      emoji: "🐍",
+      items: [
+        { t:"Змея", d:"⚠ Не отсасывай ртом! Не режь! Не жги! Обездвижь, уложи, дай воды. Не накладывай жгут (только при кобре). Срочно в больницу — сыворотка нужна в первые 2 часа. Запиши время, опиши змею." },
+        { t:"Клещ", d:"Удалить ниткой/пинцетом у самой кожи, потянуть. Не крутить! Головка осталась — к врачу. Сохрани клеща в банке для анализа. Место — антисептик. Проверь себя 30 дней на покраснение (боррелиоз)." },
+        { t:"Оса, пчела, шершень", d:"Удалить жало скребком (не пинцетом!). Холод, антигистамин. При отёке лица, дыхания — срочно 103 (анафилаксия)." },
+        { t:"Паук (каракурт, тарантул)", d:"Холод, обезболить. При каракурте — срочно в больницу (противоядие). Симптомы: боль в мышцах, потливость, температура." },
+        { t:"Бешеная собака/лиса/ёж", d:"Промыть рану водой с мылом 15 мин. Обработать антисептиком. НЕ накладывать швы! СРОЧНО в травмпункт — прививки от бешенства (48 ч — критично)." }
+      ]
+    },
+    poison: {
+      emoji: "☠",
+      items: [
+        { t:"Грибами", d:"Симптомы: тошнота, рвота, понос через 2–24 ч. Промыть желудок: 1 л воды + активированный уголь 10 таблеток. НЕ молоко! Срочно 103. Сохрани остатки грибов для анализа." },
+        { t:"Пищей", d:"Промывание, сорбенты (уголь, Энтеросгель), регидратация (Регидрон). Если температура >38,5 и кровавый понос — 103. Не давай обезболивающее до врача." },
+        { t:"Угарным газом", d:"Вынести на свежий воздух, расстегнуть одежду. Если без сознания — 103. Не зажигать огонь/не включать свет, если пахнет газом." },
+        { t:"Пестициды, удобрения", d:"Прочитать этикетку. Смыть с кожи 15 мин. При проглатывании — активированный уголь, НЕ вызывать рвоту при кислотах/щелочах. 103 немедленно. Антидоты: атропин (фосфорорганика)." },
+        { t:"Химией бытовой", d:"Смыть водой 15 мин. При вдыхании — на свежий воздух. НЕ смешивать хлор+аммиак (хлорамин — смерть). Открывай окна, выходи." }
+      ]
+    },
+    lost: {
+      emoji: "🧭",
+      items: [
+        { t:"Правило STOP", d:"S — Stop (остановись). T — Think (подумай, откуда пришёл). O — Observe (осмотрись: тропа, ориентиры). P — Plan (спланируй). Не беги вслепую!" },
+        { t:"Ориентирование", d:"Мох на северной стороне деревьев/камней. Ветки гуще с юга. Полярная звезда — на север. Солнце: восток→юг→запад. По часам: направь часовую на солнце — биссектриса между ней и 12 = юг." },
+        { t:"Иди вниз", d:"Найди ручей — иди по течению. Он выведет к реке → к людям. Не иди вверх." },
+        { t:"Ночлег", d:"Не ложись на голую землю — застели лапник, листья. Укройся сеном/мхом. Костёр: сухие нижние ветки ели, берёста. Спи не у костра, а рядом (упадёт)." },
+        { t:"Сигналы", d:"3 свистка/крика/света — сигнал SOS. Раскладывай яркую ткань, бей по стволу. Разведи костёр — дым виден за 10 км." },
+        { t:"Что взять в лес", d:"Нож, спички в герметике, компас, вода, шоколад, свисток, аптечка, дождевик, фонарь, заряженный телефон, пауэрбанк. Сообщи близким, куда идёшь и когда вернёшься." }
+      ]
+    },
+    evac: {
+      emoji: "🎒",
+      items: [
+        { t:"Тревожный рюкзак (72 часа)", d:"Документы (копии в гермопакете), деньги, аптечка, вода 3 л, еда (тушёнка, галеты, шоколад), фонарь+батарейки, спички/зажигалка, нож, свисток, смена одежды, носки, спальник/плед, гигиена, зарядка/пауэрбанк, лекарства личные (7 дней), контакты родных на бумаге." },
+        { t:"Дом перед уходом", d:"Отключи газ, электричество (кроме холодильника?), воду. Закрой окна/двери. Убери то, что улетит (мебель садовая, вёдра). Если есть время — закрой щитами окна. Оставь записку соседям. Домашних животных — с собой или открой если иначе погибнут." },
+        { t:"Транспорт", d:"Заправь машину заранее (при тревоге — очереди). Проверь запаску, домкрат, трос, аптечку, огнетушитель. Не езди вброд — 30 см воды сносит машину. Пробки объезжай по второстепенным." },
+        { t:"Если пешком", d:"Иди против потока машин. Не по обочине — по краю дороги навстречу движению. Ночью — светоотражающий жилет. Иди вдоль реки, но не по берегу (может подтопить)." },
+        { t:"Куда эвакуироваться", d:"Знай заранее: школа/клуб в 5–10 км (ПВР — пункт временного размещения), дом родных, гостиница. Заранее проговори план с семьёй: где встречаемся, если связь пропала." }
+      ]
+    }
+  },
+
+  renderTab(tab) {
+    const c = $("#sos-content");
+    if (!c) return;
+    const group = this.data[tab];
+    if (!group) return;
+    c.innerHTML = `
+      <div class="card" style="border-left:4px solid var(--danger)">
+        <div class="card-title">${group.emoji} Экстренно: ${Utils.escape(this.tabName(tab))}</div>
+      </div>
+      ${group.items.map(it => `
+        <div class="accordion ${it.t.includes("Первые") ? "open" : ""}">
+          <div class="accordion-head">${group.emoji} ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+          <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+        </div>
+      `).join("")}
+      <div class="card mt-12" style="border-left:4px solid var(--info)">
+        <div class="text-sm">📞 Единый номер: <b>112</b> · Пожарная: <b>101</b> · Полиция: <b>102</b> · Скорая: <b>103</b> · Газовая: <b>104</b></div>
+      </div>
+    `;
+    bindAccordions(c);
+  },
+
+  tabName(tab) {
+    const names = {
+      fire:"пожар", power:"нет света", flood:"паводок",
+      injury:"травмы", bite:"укусы", poison:"отравления",
+      lost:"заблудился", evac:"эвакуация"
+    };
+    return names[tab] || tab;
+  }
+};
+
+/* ===================================================
+   2. БАЗА ЗНАНИЙ
+   =================================================== */
+const Knowledge = {
+  currentTab: "lifehack",
+
+  render() {
+    this.bindTabs();
+    this.renderTab(this.currentTab);
+  },
+
+  bindTabs() {
+    const wrap = $("#know-tabs");
+    if (!wrap || wrap.dataset.bound) return;
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      $$(".chip", wrap).forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      this.currentTab = chip.dataset.tab;
+      this.renderTab(this.currentTab);
+    });
+  },
+
+  data: {
+    lifehack: [
+      { t:"Сад/огород", d:"• Яичная скорлупа + банановая кожура — удобрение для томатов.\n• Луковая шелуха — от тли (настой 1:1 с водой, 3 дня).\n• Пищевая сода — от мучнистой росы (1 ч.л. на 1 л + мыло).\n• Молоко 1:10 — от фитофторы (опрыскивать каждые 10 дней).\n• Зубная паста — защита от муравьёв (полоса вокруг грядки).\n• Чеснок — обеззараживает почву (настой на грядку)." },
+      { t:"Дом", d:"• Уксус 9% — от накипи, для мытья окон, от запаха.\n• Сода — чистит, убирает запахи в холодильнике.\n• Лимонная кислота — от накипи (1 пакет на 1 л, кипятить).\n• Горчичный порошок — мойка жирной посуды.\n• Соль — на лёд, чтобы не скользить (но портит бетон).\n• Опилки — впитывают пролитое масло, гасят возгорание." },
+      { t:"Инструмент", d:"• Ржавчину убирает кока-кола/уксус+сода.\n• Тупая пила — точить надфилем, угол 60°.\n• Сверло не скользит, если керн/шило предварительно зацепить.\n• Саморез в твёрдое дерево — смазать мылом или воском.\n• Топор — угол заточки 20–30°, брусок + напильник.\n• Цепь пилы — натяжение: провис 1 см при подъёме." },
+      { t:"Пасека", d:"• Дым — успокаивает пчёл (гнилушки, табак, сухая трава).\n• Мятное масло — от роения (мазать у летка).\n• Полынь — от моли в сотах.\n• Соль+вода 1:10 — отпугивает муравьёв от улья.\n• Осмотр при +15°C и выше, вечером.\n• Соты хранить в сухости, переложить полынью." },
+      { t:"Живность", d:"• Клевер, крапива, хвоя — витамины для кур.\n• Яичная скорлупа — источник кальция (сжечь, смолоть).\n• Зола — купание для кур от паразитов.\n• Пищевая сода 1% в воде — от поноса.\n• Молоко+йод — от отравления.\n• Козам — сено с ветками берёзы/ели." },
+      { t:"Погода", d:"• Ласточки низко — к дождю.\n• Дым стоит столбом — к морозу.\n• Утренняя роса — день сухой.\n• Кошка свернулась — к холоду.\n• Красный закат — к ветру.\n• Гром в сентябре — тёплая осень." }
+    ],
+    recipe: [
+      { t:"Хлеб на закваске", d:"Закваска: 100 г муки + 100 г воды, подкармливать 5 дней. Тесто: 500 г муки, 350 г воды, 100 г закваски, 10 г соли. 4 ч подъём + 3–4 складывания. Форма, расстойка 2 ч. Печь в чугунке при 250°C 20 мин с крышкой, 20 мин без." },
+      { t:"Солёные огурцы", d:"Огурцы 1 кг + укроп, хрен, чеснок, смородина (лист). Рассол: 2 ст. л. соли на 1 л воды. Залить холодным, 3–5 дней при +20°C, затем в погреб. Хрустят." },
+      { t:"Квашеная капуста", d:"Капуста 2 кг + морковь 200 г + соль 40 г. Мять до сока. В бочку, гнёт. 3–5 дней при +18°C, прокалывать. Затем на холод." },
+      { t:"Варенье из сосновых шишек", d:"Шишки 1 кг + сахар 1,5 кг + вода 1 л. Кипятить 3 раза по 5 мин с перерывами 6 ч. В банки. От кашля и для иммунитета." },
+      { t:"Домашний сыр (качотта)", d:"Молоко 10 л + закваска + сычуг. Свернуть 40 мин. Резать кубиком 1 см. Нагреть до 40°C. В форму, прессовать 30 мин. Солить в рассоле 12 ч. Сушить 2 дня, есть через 7–14 дней." },
+      { t:"Иван-чай", d:"Листья завялить 12 ч в тени. Скрутить в колбаски. Ферментировать 24–48 ч при +25°C. Сушить при +60°C. Хранить в стекле." },
+      { t:"Травяной чай", d:"Смесь: душица, чабрец, мята, липа, шиповник. Пропорция по вкусу. Настой 10 мин в термосе. Хранить в бумажном пакете 6 мес." }
+    ],
+    folk: [
+      { t:"Приметы на погоду", d:"• Январь тёплый — февраль холодный.\n• Мало снега зимой — плохой урожай.\n• Дождь на Благовещение — лето мокрое.\n• Гром в марте — к плодородию.\n• Много рябины — к холодной зиме.\n• Рано зацвела черёмуха — к тёплому лету." },
+      { t:"Дни работ", d:"• 19 января (Крещение) — до обеда сено.\n• 22 марта (Сороки) — прилёт жаворонков, сей горох.\n• 7 апреля (Благовещение) — не работай, праздник.\n• 6 мая (Егорьев день) — выгон скота.\n• 14 октября (Покров) — утепляй дом." },
+      { t:"Лунные посадки", d:"Растущая луна — сажай зелень, листовые, плодовые. Убывающая — корнеплоды, обрезка, прополка. Новолуние/полнолуние — не сажай. За 2 дня до и после — тоже." },
+      { t:"Приметы на урожай", d:"• Берёза распустилась — сажай овёс.\n• Черёмуха зацвела — сажай картошку.\n• Рябина зацвела — заморозков не будет.\n• Дуб развернулся — тепло придёт надолго.\n• Осина в серёжках — весна ранняя." },
+      { t:"Дом", d:"• Не свисти в доме — денег не будет.\n• Не выноси мусор после заката.\n• Подкову на счастье — рогами вверх.\n• Не садись на стол — нечисть сидит.\n• Порог — не целуй, не через порог здоровайся." }
+    ],
+    medicine: [
+      { t:"Травы аптечные", d:"• Ромашка — противовоспалительное, ЖКТ.\n• Календула — ранозаживляющее.\n• Зверобой — антидепрессант, противовоспалительное.\n• Тысячелистник — кровоостанавливающее.\n• Подорожник — раны, кашель.\n• Мать-и-мачеха — кашель, бронхит.\n• Чабрец — бронхит, ангина (полоскание).\n• Душица — успокаивающее, ЖКТ." },
+      { t:"Настойки", d:"• Прополис: 10 г на 100 мл спирта, 2 недели в темноте. Применение: 20 капель на воду, от простуды.\n• Мумиё: 1 г на 100 мл воды. Общее укрепляющее.\n• Кедровка: кедровые орехи + мёд + лимон.\n• Хрен: настойка от радикулита (наружно)." },
+      { t:"Простуда (дом. средства)", d:"• Малина — жаропонижающее.\n• Лимон+мёд+имбирь — чай.\n• Ингаляции: сода, картошка, эвкалипт.\n• Полоскание: ромашка, сода+соль+йод.\n• Согревающее: горчичники (не на сердце), баня при 60–70°C." },
+      { t:"От насекомых", d:"• От комаров: гвоздика+лимон, эвкалипт, полынь.\n• От мошки: ванилин+вода.\n• От клещей: репеллент на обувь, осмотр каждые 30 мин." },
+      { t:"⚠ Осторожно", d:"Травы — это лекарство. Не применяй без знаний. При беременности, детях, хронических — к врачу. Некоторые ядовиты (чистотел, болиголов)." }
+    ],
+    law: [
+      { t:"Земля ЛПХ", d:"Личное подсобное хозяйство. Разрешено: сад, огород, животноводство без коммерческой цели. Регистрация в похозяйственной книге. Продажа излишков — не считается предпринимательством (в некоторых регионах)." },
+      { t:"Регистрация построек", d:"Дом, баня, сарай до 50 м² — «дачная амнистия» (до марта 2031). Регистрация через МФЦ, без разрешения на строительство. ⚠ Дом для постоянного проживания — нужно уведомление о начале/окончании строительства. Отступы: от забора 3 м (дом), 1 м (сарай)." },
+      { t:"Скот", d:"Содержание — по правилам муниципалитета. Уведомить Россельхознадзор при разведении для продажи. Учёт в похозяйственной книге. Вакцинация обязательна." },
+      { t:"Охота", d:"Охотбилет единого образца (Госуслуги). Разрешение на оружие. Путёвка на конкретный вид/срок. Штраф за незаконную охоту — до 500 тыс. ₽ или лишение свободы до 2 лет." },
+      { t:"Рыбалка", d:"Свободно — на удочку/спиннинг в разрешённых местах и сроки. Сети — только с лицензией. Нерест (апрель-июнь) — не ловить. Штраф за сети — до 300 тыс. ₽." },
+      { t:"Субсидии", d:"• Начинающий фермер: до 5 млн ₽.\n• Грант «Агростартап»: до 7 млн.\n• ЛПХ — микрозаймы под 1–3%.\n• Условия: регистрация, бизнес-план, софинансирование 10%.\n• Обращаться: Россельхозбанк, МФЦ." },
+      { t:"Налоги", d:"Земельный налог — от кадастровой стоимости (0,3% для ЛПХ). НДФЛ — только с продажи излишков (можно оформить самозанятость, 4–6%). С 2025 — дачная амнистия продлена." }
+    ]
+  },
+
+  renderTab(tab) {
+    const c = $("#know-content");
+    if (!c) return;
+    const items = this.data[tab] || [];
+    const icons = { lifehack:"💡", recipe:"🍲", folk:"🌾", medicine:"🌿", law:"⚖" };
+    c.innerHTML = `
+      <div class="field mb-12">
+        <input type="text" id="know-search" placeholder="🔍 Поиск по разделу...">
+      </div>
+      <div id="know-list">
+        ${items.map(it => `
+          <div class="accordion" data-search="${(it.t + " " + it.d).toLowerCase()}">
+            <div class="accordion-head">${icons[tab]} ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+            <div class="accordion-body"><p style="white-space:pre-line">${Utils.escape(it.d)}</p></div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    bindAccordions(c);
+    const inp = $("#know-search");
+    if (inp) {
+      inp.addEventListener("input", Utils.debounce(() => {
+        const q = inp.value.trim().toLowerCase();
+        $$("#know-list .accordion").forEach(acc => {
+          const s = acc.dataset.search || "";
+          acc.style.display = !q || s.includes(q) ? "" : "none";
+        });
+      }, 200));
+    }
+  }
+};
+
+/* ===================================================
+   3. РЕГИСТРАЦИЯ ХУКОВ
+   =================================================== */
+Object.assign(window.ScreenHooks || (window.ScreenHooks = {}), {
+  emergency: () => Emergency.render(),
+  knowledge: () => Knowledge.render()
+});
+
+window.Emergency = Emergency;
+window.Knowledge = Knowledge;
+
+/* ===================================================
+   4. PWA — динамическая регистрация service worker
+   =================================================== */
+(function registerPWA() {
+  if (!("serviceWorker" in navigator)) return;
+  const swCode = `
+    const CACHE = 'dvor-v1';
+    self.addEventListener('install', e => {
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', e => {
+      e.waitUntil(clients.claim());
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(
+        caches.open(CACHE).then(cache =>
+          fetch(e.request).then(resp => {
+            if (e.request.method === 'GET' && resp.ok) cache.put(e.request, resp.clone());
+            return resp;
+          }).catch(() => cache.match(e.request))
+        )
+      );
+    });
+  `;
+  // Регистрируем inline через Blob (чтобы не создавать отдельный файл)
+  const blob = new Blob([swCode], { type: "application/javascript" });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(() => {
+    // тихо игнорируем, если не получилось
+  });
+})();
+
+/* ===================================================
+   5. МАНИФЕСТ — динамически через link
+   =================================================== */
+(function injectManifest() {
+  const manifest = {
+    name: "ДВОР — хозяйство, дом, земля",
+    short_name: "ДВОР",
+    description: "Офлайн-помощник для жизни на своей земле",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#f5f2ea",
+    theme_color: "#2d5016",
+    orientation: "portrait",
+    lang: "ru",
+    icons: [
+      {
+        src: "data:image/svg+xml;base64," + btoa(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+            <rect width="512" height="512" rx="80" fill="#2d5016"/>
+            <text x="50%" y="55%" font-size="260" text-anchor="middle" dominant-baseline="middle" fill="#fff">🌾</text>
+          </svg>
+        `),
+        sizes: "512x512",
+        type: "image/svg+xml",
+        purpose: "any maskable"
+      }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = url;
+  document.head.appendChild(link);
+})();
+
+/* ===================================================
+   6. ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ
+   =================================================== */
+document.addEventListener("DOMContentLoaded", () => {
+  // Гарантированно инициализируем все экраны лениво
+  const originalGo = Router.go.bind(Router);
+  Router.go = function(screen, updateHash) {
+    originalGo(screen, updateHash);
+  };
+
+  // Первичная отрисовка главного
+  Home.render();
+
+  // Обновляем главный экран при возврате
+  window.addEventListener("hashchange", () => {
+    if (Router.current === "home") Home.render();
+  });
+
+  console.log("🌾 ДВОР готов. Разделов:", Object.keys(ScreenHooks).length);
+});
+</script>
+
+</body>
+</html>
