@@ -10131,6 +10131,251 @@ window.DVOR = {
 console.log("✅ Часть 10 загружена: Погода + Календарь + Станция + Финальная инициализация");
 console.log("🎉 ДВОР v4.0 — полностью готов!");
 </script>
+<!-- =========================================================
+     ФИНАЛЬНЫЙ ФИКС v4.0.1
+     ========================================================= -->
+<script>
+(function finalFix() {
+  console.log("🔧 Финальный фикс запускается...");
 
+  // ============================================================
+  // 1. Диагностика — какие модули есть, какие упали
+  // ============================================================
+  const allModules = [
+    "advisor","finance","deadlines","garden","mushrooms","bees","livestock","pets",
+    "build","eng","cellar","process","inventory","medicine","resources","crafts",
+    "family","photos","maintenance","mistakes","school","smart","market","coop",
+    "time","map","weather","calendar","knowledge","emergency","search","settings"
+  ];
+
+  const registered = Object.keys(Registry.modules);
+  const missing = allModules.filter(m => !registered.includes(m));
+
+  console.log("📦 Зарегистрировано модулей:", registered.length, "из", allModules.length);
+  if (missing.length) {
+    console.error("❌ НЕ ЗАРЕГИСТРИРОВАНЫ:", missing);
+  }
+
+  // Проверка экранов в DOM
+  const missingScreens = allModules.filter(m => !document.getElementById("screen-" + m));
+  if (missingScreens.length) {
+    console.warn("⚠ Нет экранов в DOM:", missingScreens);
+  }
+
+  // ============================================================
+  // 2. ФИКС КНОПКИ «ЕЩЁ»
+  // ============================================================
+  const menuBtn = document.querySelector('.nav-item[data-screen="menu"]');
+  if (menuBtn) {
+    // Удаляем старый обработчик — заменяем на новый
+    const newMenuBtn = menuBtn.cloneNode(true);
+    menuBtn.parentNode.replaceChild(newMenuBtn, menuBtn);
+    newMenuBtn.addEventListener("click", () => {
+      // Перейти на главную
+      Router.go("home");
+      // Раскрыть все секции меню
+      setTimeout(() => {
+        const sections = document.querySelectorAll("#home-menu .menu-section");
+        if (!sections.length) {
+          console.warn("⚠ Меню пустое. Проверь Home.render()");
+          return;
+        }
+        sections.forEach(s => s.classList.add("open"));
+        // Скроллить к меню
+        const menuEl = document.getElementById("home-menu");
+        if (menuEl) {
+          setTimeout(() => {
+            menuEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 100);
+        }
+      }, 300);
+      // Подсветить кнопку
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+      newMenuBtn.classList.add("active");
+    });
+  }
+
+  // ============================================================
+  // 3. ГЛОБАЛЬНЫЙ ДЕЛЕГИРОВАННЫЙ ОБРАБОТЧИК — все кнопки работают
+  // ============================================================
+
+  // Клик по пунктам меню в аккордеоне
+  document.body.addEventListener("click", (e) => {
+    const item = e.target.closest(".menu-item[data-screen]");
+    if (item) {
+      e.preventDefault();
+      e.stopPropagation();
+      const screen = item.dataset.screen;
+      console.log("→ Переход:", screen);
+      Router.go(screen);
+    }
+  }, true);
+
+  // Клик по карточкам меню (если есть)
+  document.body.addEventListener("click", (e) => {
+    const card = e.target.closest(".menu-card[data-screen]");
+    if (card) {
+      e.preventDefault();
+      e.stopPropagation();
+      Router.go(card.dataset.screen);
+    }
+  }, true);
+
+  // Клик по nav-item (нижняя навигация)
+  document.body.addEventListener("click", (e) => {
+    const nav = e.target.closest(".nav-item[data-screen]");
+    if (!nav) return;
+    const screen = nav.dataset.screen;
+    if (screen === "menu") return; // обрабатывается отдельно
+    e.preventDefault();
+    e.stopPropagation();
+    Router.go(screen);
+  }, true);
+
+  // Раскрытие секции меню по клику на заголовок
+  document.body.addEventListener("click", (e) => {
+    const head = e.target.closest(".menu-section-head");
+    if (head) {
+      const section = head.parentElement;
+      section.classList.toggle("open");
+    }
+  }, true);
+
+  // ============================================================
+  // 4. БЕЗОПАСНЫЙ РЕНДЕР — переопределяем Registry.render
+  // ============================================================
+  const safeRender = function(screen) {
+    const m = Registry.modules[screen];
+    if (!m) {
+      console.warn("⚠ Модуль не найден:", screen);
+      const target = document.getElementById("screen-" + screen);
+      if (target) {
+        const contentEl = target.querySelector("[id$='-content']") || target;
+        contentEl.innerHTML = `
+          <div class="card warn">
+            <div class="card-title">⚠ Раздел «${screen}» не загружен</div>
+            <p class="text-sm">Этот модуль не зарегистрировался. Проверь консоль (F12) — там указана ошибка.</p>
+          </div>
+        `;
+      }
+      return;
+    }
+    try {
+      m.renderFn();
+    } catch (err) {
+      console.error("❌ Ошибка рендера [" + screen + "]:", err);
+      // Найдём контейнер
+      const target = document.getElementById("screen-" + screen);
+      if (target) {
+        const contentEl = target.querySelector("[id$='-content']") || target;
+        contentEl.innerHTML = `
+          <div class="card danger">
+            <div class="card-title">❌ Ошибка в разделе «${m.name}»</div>
+            <p class="text-sm" style="word-break:break-all;font-family:monospace;font-size:12px">${(err.message || err).toString().slice(0, 300)}</p>
+            <button class="btn btn-primary btn-sm btn-block mt-12" onclick="Router.go('home')">На главную</button>
+            <button class="btn btn-secondary btn-sm btn-block mt-8" onclick="location.reload()">Перезагрузить</button>
+          </div>
+        `;
+      }
+    }
+  };
+
+  // Переопределяем go
+  const origGo = Router.go.bind(Router);
+  Router.go = function(screen, updateHash) {
+    // Спец-обработка "menu"
+    if (screen === "menu") {
+      const menuBtn = document.querySelector('.nav-item[data-screen="menu"]');
+      if (menuBtn) menuBtn.click();
+      return;
+    }
+
+    const target = document.getElementById("screen-" + screen);
+    if (!target) {
+      console.warn("⚠ Экран не найден: screen-" + screen);
+      Toast.show("Раздел в разработке");
+      return;
+    }
+
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    target.classList.add("active");
+    Router.current = screen;
+    if (updateHash) location.hash = screen;
+    window.scrollTo({ top: 0, behavior: "instant" });
+
+    document.querySelectorAll(".nav-item").forEach(b => {
+      b.classList.toggle("active", b.dataset.screen === screen);
+    });
+
+    if (screen === "home") {
+      try {
+        Home.render();
+      } catch (err) {
+        console.error("❌ Ошибка Home.render:", err);
+      }
+    } else {
+      safeRender(screen);
+    }
+  };
+
+  // ============================================================
+  // 5. ЕСЛИ КАКОЙ-ТО МОДУЛЬ УПАЛ — РЕГИСТРИРУЕМ ЗАГЛУШКУ
+  // ============================================================
+  missing.forEach(m => {
+    console.warn("⚠ Регистрирую заглушку для:", m);
+    Registry.register(m, m, "⚠", () => {
+      const target = document.getElementById("screen-" + m);
+      if (!target) return;
+      const contentEl = target.querySelector("[id$='-content']") || target;
+      contentEl.innerHTML = `
+        <div class="card warn">
+          <div class="card-title">⚠ Раздел «${m}» не загрузился</div>
+          <p class="text-sm">Скорее всего, ошибка в одной из частей кода. Открой консоль (F12) и найди красные строки с названием «${m}».</p>
+          <p class="text-xs text-muted mt-8">Скопируй текст ошибки и покажи разработчику — это 5-минутный фикс.</p>
+        </div>
+      `;
+    });
+  });
+
+  // ============================================================
+  // 6. ДОПОЛНИТЕЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ ОСНОВНЫХ ЭЛЕМЕНТОВ
+  // ============================================================
+  const btnSearch = document.getElementById("btn-search");
+  if (btnSearch) {
+    btnSearch.onclick = () => Router.go("search");
+  }
+
+  const btnTheme = document.getElementById("btn-theme");
+  if (btnTheme) {
+    btnTheme.onclick = () => Theme.cycle();
+  }
+
+  const btnMenu = document.getElementById("btn-menu");
+  if (btnMenu) {
+    btnMenu.onclick = () => {
+      const menuBtn = document.querySelector('.nav-item[data-screen="menu"]');
+      if (menuBtn) menuBtn.click();
+    };
+  }
+
+  // ============================================================
+  // 7. ВЫВОД ИТОГОВ
+  // ============================================================
+  setTimeout(() => {
+    console.log("========== ФИНАЛЬНАЯ ПРОВЕРКА ==========");
+    allModules.forEach(m => {
+      const ok = !!Registry.modules[m];
+      const screenOk = !!document.getElementById("screen-" + m);
+      const icon = ok && screenOk ? "✅" : ok ? "⚠ " : "❌";
+      console.log(icon + " " + m + (ok ? "" : " — НЕ зарегистрирован") + (screenOk ? "" : " — нет экрана"));
+    });
+    console.log("=========================================");
+    console.log("💡 Если видишь ❌ — открой консоль, найди ошибку выше и покажи её.");
+    Toast.show("Фикс применён", "success");
+  }, 500);
+
+  console.log("✅ Финальный фикс применён");
+})();
+</script>
 </body>
 </html>
