@@ -11799,5 +11799,596 @@ DVOR.charts — графики`);
 console.log("⏱ Блок 4 загружен: Время + Кулинария + Станция + Родословные + Кооперация + Доска");
 console.log("🎉 Все 4 блока расширения установлены — ДВОР v3.0 готов");
 </script>
+<script>
+/* ============================================================
+   ФИНАЛЬНЫЙ ФИКС ВСЕХ ПРОБЛЕМ
+   Чиним: ScreenHooks, Советник, Ремесло, Добыча, Цветник
+   ============================================================ */
+(function totalFix() {
+  console.log("🔧 Запуск финального фикса...");
+
+  // ============================================================
+  // 1. СОЗДАЁМ ЕДИНЫЙ ScreenHooks НА WINDOW
+  // ============================================================
+  if (!window.ScreenHooks || typeof window.ScreenHooks !== "object") {
+    window.ScreenHooks = {};
+  }
+  const SH = window.ScreenHooks;
+
+  // ============================================================
+  // 2. СОЗДАЁМ ВСЕ ЭКРАНЫ, КОТОРЫХ НЕТ В DOM
+  // ============================================================
+  const screensConfig = [
+    { id:"advisor",    title:"🧠 Советник",         subtitle:"Персональные советы",           contentId:"advisor-content" },
+    { id:"agro",       title:"🌾 Агроном",          subtitle:"Планы посадок",                  contentId:"agro-content" },
+    { id:"vetkit",     title:"🩺 Вет-аптечка",      subtitle:"Препараты для животных",         contentId:"vetkit-content" },
+    { id:"doctor",     title:"🔍 Определитель",     subtitle:"Болезни растений",               contentId:"doctor-content" },
+    { id:"honeymap",   title:"🍯 Медовая карта",    subtitle:"Медоносы и лётные дни",          contentId:"honeymap-content" },
+    { id:"time",       title:"⏱ Учёт времени",      subtitle:"Себестоимость с часами",         contentId:"time-content" },
+    { id:"cook",       title:"📚 Кулинарная книга", subtitle:"Рецепты из твоих запасов",       contentId:"cook-content" },
+    { id:"station",    title:"🌡 Погодная станция", subtitle:"Свои замеры",                    contentId:"station-content" },
+    { id:"tree",       title:"🌳 Родословные",      subtitle:"Матки и животные",               contentId:"tree-content" },
+    { id:"coop",       title:"🤝 Кооперация",       subtitle:"Обмен с соседями",               contentId:"coop-content" },
+    { id:"board",      title:"📢 Доска района",     subtitle:"Объявления",                     contentId:"board-content" }
+  ];
+
+  const mainEl = document.querySelector(".app-main");
+  screensConfig.forEach(cfg => {
+    let el = document.getElementById("screen-" + cfg.id);
+    if (!el && mainEl) {
+      el = document.createElement("section");
+      el.className = "screen";
+      el.id = "screen-" + cfg.id;
+      el.innerHTML = `
+        <h1 class="screen-title">${cfg.title}</h1>
+        <p class="screen-subtitle">${cfg.subtitle}</p>
+        <div id="${cfg.contentId}"></div>
+      `;
+      mainEl.appendChild(el);
+    }
+  });
+
+  // ============================================================
+  // 3. БЕЗОПАСНЫЙ ВЫЗОВ ХУКОВ
+  // ============================================================
+  function safeCall(fn, label) {
+    try {
+      if (typeof fn === "function") fn();
+    } catch (e) {
+      console.error("❌ Ошибка в разделе " + label + ":", e);
+      if (window.Toast) Toast.show("Ошибка загрузки: " + label, "danger");
+    }
+  }
+
+  // ============================================================
+  // 4. РЕГИСТРИРУЕМ ВСЕ ХУКИ ЗАНОВО
+  // ============================================================
+  const hooksMap = {
+    home:        () => window.Home?.render?.(),
+    advisor:     () => window.Advisor?.renderScreen?.(),
+    finance:     () => window.Finance?.render?.(),
+    deadlines:   () => window.Deadlines?.render?.(),
+    garden:      () => window.Garden?.render?.(),
+    mushrooms:   () => window.Mushrooms?.render?.(),
+    bees:        () => window.Bees?.render?.(),
+    livestock:   () => window.Livestock?.render?.(),
+    build:       () => window.Build?.render?.(),
+    eng:         () => window.Engineering?.render?.(),
+    cellar:      () => window.Cellar?.render?.(),
+    process:     () => window.Process?.render?.(),
+    inventory:   () => window.Inventory?.render?.(),
+    medicine:    () => window.Medicine?.render?.(),
+    resources:   () => window.Resources?.render?.(),
+    crafts:      () => window.Crafts?.render?.(),
+    pets:        () => window.Pets?.render?.(),
+    family:      () => window.Family?.render?.(),
+    photos:      () => window.Photos?.render?.(),
+    maintenance: () => window.Maintenance?.render?.(),
+    mistakes:    () => window.Mistakes?.render?.(),
+    school:      () => window.School?.render?.(),
+    smart:       () => window.Smart?.render?.(),
+    market:      () => window.Market?.render?.(),
+    map:         () => window.MapScreen?.render?.(),
+    weather:     () => window.Weather?.renderScreen?.(),
+    calendar:    () => window.CalendarScreen?.render?.(),
+    knowledge:   () => window.Knowledge?.render?.(),
+    emergency:   () => window.Emergency?.render?.(),
+    search:      () => window.SearchScreen?.focus?.(),
+    settings:    () => window.SettingsScreen?.render?.(),
+    time:        () => window.TimeTracker?.render?.("time-content"),
+    cook:        () => window.CookBook?.render?.("cook-content"),
+    station:     () => window.WeatherStation?.render?.("station-content"),
+    tree:        () => window.FamilyTree?.render?.("tree-content"),
+    coop:        () => window.Cooperation?.render?.("coop-content"),
+    board:       () => window.LocalBoard?.render?.("board-content"),
+    agro:        () => window.Agro?.render?.("agro-content") || window.Agronom?.render?.("agro-content"),
+    vetkit:      () => window.VetKit?.render?.("vetkit-content"),
+    doctor:      () => window.PlantDoctor?.render?.("doctor-content"),
+    honeymap:    () => window.HoneyMap?.render?.("honeymap-content")
+  };
+
+  Object.keys(hooksMap).forEach(key => {
+    SH[key] = function() { safeCall(hooksMap[key], key); };
+  });
+
+  console.log("✅ Все " + Object.keys(hooksMap).length + " хуков зарегистрированы");
+
+  // ============================================================
+  // 5. РЕМЕСЛО — ЕСЛИ УПАЛО, ЗАГРУЖАЕМ ЗАНОВО
+  // ============================================================
+  if (!window.Crafts || !document.getElementById("craft-content")) {
+    console.warn("⚠ Ремесло не найдено, создаю...");
+    window.Crafts = {
+      render() {
+        const c = document.getElementById("craft-content");
+        if (!c) return;
+        c.innerHTML = `
+          <div class="card success">
+            <div class="card-title">🔨 Ремесло</div>
+            <p class="text-sm">Выбери направление:</p>
+          </div>
+          <div class="chips" id="craft-simple-tabs">
+            <span class="chip active" data-tab="wood">🪚 Столярка</span>
+            <span class="chip" data-tab="metal">🔨 Кузня</span>
+            <span class="chip" data-tab="food">🧀 Сыры</span>
+            <span class="chip" data-tab="drinks">🍺 Напитки</span>
+            <span class="chip" data-tab="soap">🧼 Мыло/свечи</span>
+          </div>
+          <div id="craft-simple-body"></div>
+        `;
+        const data = {
+          wood: [
+            { t:"Инструмент минимум", d:"Пила, рубанок, стамески 6–20 мм, киянка, шуруповёрт, струбцины, угольник, карандаш, наждачка.\n\nЭлектро: циркулярка, лобзик, шлифмашинка, фрезер." },
+            { t:"Соединения", d:"• Вполдерева — простое и крепкое\n• Шип-паз — для рамок\n• Ласточкин хвост — для ящиков\n• На шкантах — красивое\n\nКлей ПВА D3 для улицы." },
+            { t:"Отделка", d:"Шлифовка: 80 → 120 → 180 → 220.\n\nПокрытие: масло, воск, лак.\n\nСовет: разделочные доски — только масло." },
+            { t:"Проекты для старта", d:"• Полки\n• Табурет\n• Стол\n• Лавка в баню\n• Скворечник\n• Ящик для инструмента" },
+            { t:"Цены на материалы", d:"Доска 25×100×6000: 200–400 ₽\nДоска 50×150×6000: 500–900 ₽\nБрус 100×100×6000: 700–1200 ₽\nФанера 10 мм: 800–1500 ₽" }
+          ],
+          metal: [
+            { t:"Оборудование", d:"Наковальня 50–100 кг, горн, молотки 1–3 кг, клещи, зубила, напильники, тиски.\n\nЗащита: очки, фартук, перчатки." },
+            { t:"Температура ковки", d:"800–1200°C — жёлто-оранжевый цвет.\n\nНе перегревай до белого.\n\nОтпуск: 200–300°C (синий/соломенный)." },
+            { t:"Сварка", d:"Инвертор 160–200 А, электрод МР-3.\n\nМаска-хамелеон!\n\nПорядок: зачистить → прихватить → варить." },
+            { t:"Что делать новичку", d:"Гвозди, подковы, решётки, крючки, кочерга, вертел, подсвечники." },
+            { t:"Где брать металл", d:"Металлолом, старые рессоры, подшипники, арматура.\n\nПодшипники ШХ15 — для ножей." }
+          ],
+          food: [
+            { t:"Сыроварение база", d:"Молоко пастеризовать 63°C/30 мин. Закваска. Сычуг 1/4 ч.л. на 10 л.\n\nСвернуть 30–60 мин. Резать. Нагреть. Спрессовать. Солить." },
+            { t:"Виды сыров", d:"• Брынза — 3–4 дня в рассоле\n• Качотта — 1–2 мес\n• Гауда — 2–6 мес\n• Моцарелла — тянуть\n• Пармезан — 12+ мес" },
+            { t:"Колбасы", d:"70% мясо + 30% жира. Соль 2%, нитрит 0,5%.\n\n⚠ Нитрит натрия — защита от ботулизма, обязателен!" },
+            { t:"Копчение", d:"Холодное 20–25°C (сутки). Горячее 60–90°C (2–6 ч).\n\nЩепа: ольха, яблоня, вишня. НЕ хвоя!" }
+          ],
+          drinks: [
+            { t:"Пиво", d:"Солод 4 кг на 20 л. Затирание 65°C/60 мин. Кипячение 60 мин. Брожение 7–10 дней." },
+            { t:"Вино", d:"Ягоды 5 кг + сахар 1,5 кг + дрожжи. Брожение 7–14 дней. Выдержка 3 мес." },
+            { t:"Квас", d:"Хлеб 500 г + вода 3 л + сахар 100 г + дрожжи 5 г. 12 ч в тепле." },
+            { t:"Медовуха", d:"Мёд 1 кг + вода 4 л + дрожжи 5 г. Брожение 14 дней + 30 дней." },
+            { t:"Настойки", d:"Кедровка, хреновуха, лимончелло, вишнёвка. Настаивать 2–4 недели." }
+          ],
+          soap: [
+            { t:"Мыло с нуля", d:"⚠ Щёлочь! Рецепт: NaOH 100 г + вода 250 г + масло 700 г.\n\nСмешать при 40°C. В форму. Сушить 4 недели." },
+            { t:"Мыло из обмылков", d:"Обмылки + молоко + масло. Расплавить. В форму." },
+            { t:"Свечи", d:"Воск плавится при 65°C. Фитиль — хлопок. Форма — силикон.\n\nЗаливать 2 раза." },
+            { t:"Вощина своя", d:"Из воска через вальцы. Экономия 500 ₽ за лист." },
+            { t:"Свечи из вощины", d:"Полоска вощины + фитиль. Скрутить в спираль. Без огня!" }
+          ]
+        };
+        const renderBody = (key) => {
+          const body = document.getElementById("craft-simple-body");
+          if (!body) return;
+          body.innerHTML = data[key].map(it => `
+            <div class="accordion">
+              <div class="accordion-head">📖 ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+              <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+            </div>
+          `).join("");
+          // Bind accordions
+          body.querySelectorAll(".accordion").forEach(acc => {
+            const head = acc.querySelector(".accordion-head");
+            head.addEventListener("click", () => acc.classList.toggle("open"));
+          });
+        };
+        renderBody("wood");
+        const tabs = document.getElementById("craft-simple-tabs");
+        tabs.querySelectorAll(".chip").forEach(chip => {
+          chip.addEventListener("click", () => {
+            tabs.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            renderBody(chip.dataset.tab);
+          });
+        });
+      }
+    };
+    console.log("✅ Ремесло загружено fallback-версией");
+  }
+
+  // ============================================================
+  // 6. ДОБЫЧА — ЕСЛИ УПАЛА, ЗАГРУЖАЕМ ЗАНОВО
+  // ============================================================
+  if (!window.Resources || !document.getElementById("res-content")) {
+    console.warn("⚠ Добыча не найдена, создаю...");
+    window.Resources = {
+      render() {
+        const c = document.getElementById("res-content");
+        if (!c) return;
+        c.innerHTML = `
+          <div class="card success">
+            <div class="card-title">⛏ Добыча ресурсов</div>
+            <p class="text-sm">Лес, вода, камень, дикоросы — всё, что можно добыть бесплатно.</p>
+          </div>
+          <div class="chips" id="res-simple-tabs">
+            <span class="chip active" data-tab="wood">🪵 Лес</span>
+            <span class="chip" data-tab="water">💧 Вода</span>
+            <span class="chip" data-tab="stone">🪨 Камень</span>
+            <span class="chip" data-tab="clay">🧱 Глина</span>
+            <span class="chip" data-tab="wild">🌿 Дикоросы</span>
+            <span class="chip" data-tab="hunt">🎣 Охота</span>
+          </div>
+          <div id="res-simple-body"></div>
+        `;
+        const data = {
+          wood: [
+            { t:"Валка дерева", d:"1. Определи наклон.\n2. Подпил (1/4) со стороны падения.\n3. Пропил сзади выше на 3–5 см.\n\n⚠ Не пили на ветру! Отойди на 5 м. Кричи «Идёт!»" },
+            { t:"Раскряжёвка", d:"Чурбаки по 40–50 см.\n\nКрупные — на брус/доску.\n\nОбрубай сучки заподлицо." },
+            { t:"Породы и теплотворность", d:"Дуб 2100, берёза 1900, ясень 1900, сосна 1500, ель 1400, осина 1300 (для бани!), ольха 1200, липа 1100 кВт·ч/м³." },
+            { t:"Сушка дров", d:"Пилить — весна. Колоть — сразу. Укладывать под навес.\n\nСрок: 1–2 года. Влажность 15–20%.\n\nМокрые дрова — потеря 30% тепла." },
+            { t:"Укладка поленницы", d:"На подставках 10–15 см над землёй. Юг/восток — продув. Торцы наружу. Кора сверху.\n\nНе укрывай плёнкой!" },
+            { t:"Правила рубки", d:"⚠ Штраф до 500 тыс. ₽ за незаконную рубку.\n\nДля ЛПХ — до 5 м³ в год бесплатно.\n\nЧерез лесничество по договору — дешевле всего." }
+          ],
+          water: [
+            { t:"Колодец", d:"Копать на возвышении, ≥10 м от септика.\n\nКольца КС10-9.\n\nДно — щебень 20 см.\n\nСтоимость: 50–150 тыс. ₽." },
+            { t:"Скважина", d:"Бурение: шнековое, роторное.\n\nОбсадка: пластик 110–160 мм.\n\nАртезианская 50+ м — отличная вода.\n\nСтоимость: 2000–4000 ₽/м." },
+            { t:"Родник", d:"Каптаж: глиняный замок, гравий, бетонный ящик.\n\n⚠ Проверять воду в лаборатории!" },
+            { t:"Дождевая вода", d:"Бочки 200 л под водосток.\n\nДля полива. Первый дождь сливать.\n\nНельзя пить без обработки." },
+            { t:"Обеззараживание", d:"• Кипятить 10 мин\n• Хлор — 2 таб. «Аквасан» на 1 л\n• Фильтр 0,2 мкм\n• УФ — для дома" }
+          ],
+          stone: [
+            { t:"Дикий камень", d:"Песчаник, гранит. Собирать на полях, карьерах (с разрешения!).\n\nДля фундамента, отмостки, декора." },
+            { t:"Щебень", d:"5–20 мм — основание, 20–40 — дренаж, 40–70 — отсыпка." },
+            { t:"Песок", d:"Речной — для бетона. Карьерный — для кладки (промыть).\n\nПроверка: сжать в кулаке." },
+            { t:"Правила", d:"⚠ Нельзя в нацпарках, на берегах рек, на чужой земле.\n\nДля своего участка — свободно." }
+          ],
+          clay: [
+            { t:"Глина", d:"Копать на глубине 1–3 м.\n\nСкатать колбаску, согнуть — если не трескается, жирная.\n\nДля раствора, печи, гончарки." },
+            { t:"Торф", d:"Верховой (рыжий) — мульча. Низинный (чёрный) — удобрение.\n\nПросушить на воздухе." },
+            { t:"Сапропель", d:"Озёрный ил. Добыча со дна, сушка.\n\n2–5 кг/м² под перекопку." },
+            { t:"Дёрн, мох, кора", d:"• Дёрн — газон, склоны\n• Мох-сфагнум — для хранения\n• Кора сосны — мульча\n• Хвоя — витамины для кур" }
+          ],
+          wild: [
+            { t:"Берёзовый сок", d:"Март-апрель. Сверлить 3–5 см, Ø 1 см.\n\nСобрать 2–5 л с дерева.\n\nЗабить колышек после." },
+            { t:"Иван-чай", d:"Июнь-август. Завялить 12 ч → скрутить → ферментировать 24–48 ч → высушить." },
+            { t:"Травы", d:"Зверобой, душица, чабрец, ромашка, мята.\n\nСобирать утром в сухую погоду.\n\nСушить в тени." },
+            { t:"Ягоды — календарь", d:"Земляника — июнь. Черника — июль. Малина — июль. Брусника — сентябрь. Клюква — октябрь." },
+            { t:"Орехи", d:"Лещина — август-сентябрь. Кедр — сентябрь-октябрь. Грецкий — сентябрь." },
+            { t:"Правила сбора", d:"⚠ Травы — не у дорог, не у ЛЭП.\n\nЛекарственные — 1/3 популяции." }
+          ],
+          hunt: [
+            { t:"Охотничий билет", d:"Обязателен! Через Госуслуги. 5–10 дней." },
+            { t:"Оружие", d:"Гладкоствол с 18 лет. Нарезное с 21 года.\n\nМедкомиссия, курсы, сейф." },
+            { t:"Сроки охоты", d:"Утка — с 3-й субботы августа. Заяц — октябрь-январь. Лось — сентябрь-декабрь.\n\nУточняй в регионе!" },
+            { t:"Рыбалка", d:"Летом: удочка, спиннинг. Зимой: балансир, мормышка.\n\n⚠ Нерест апрель-июнь — не ловить." },
+            { t:"Снаряжение", d:"Нож, спички в герметике, аптечка, компас, карта, фонарь, дождевик, вода, еда на сутки, свисток." }
+          ]
+        };
+        const renderBody = (key) => {
+          const body = document.getElementById("res-simple-body");
+          if (!body) return;
+          body.innerHTML = data[key].map(it => `
+            <div class="accordion">
+              <div class="accordion-head">📖 ${Utils.escape(it.t)} <span class="arrow">▶</span></div>
+              <div class="accordion-body"><p>${Utils.escape(it.d)}</p></div>
+            </div>
+          `).join("");
+          body.querySelectorAll(".accordion").forEach(acc => {
+            const head = acc.querySelector(".accordion-head");
+            head.addEventListener("click", () => acc.classList.toggle("open"));
+          });
+        };
+        renderBody("wood");
+        const tabs = document.getElementById("res-simple-tabs");
+        tabs.querySelectorAll(".chip").forEach(chip => {
+          chip.addEventListener("click", () => {
+            tabs.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            renderBody(chip.dataset.tab);
+          });
+        });
+      }
+    };
+    console.log("✅ Добыча загружена fallback-версией");
+  }
+
+  // ============================================================
+  // 7. ЦВЕТНИК — ЕСЛИ УПАЛ, ЗАГРУЖАЕМ ЗАНОВО
+  // ============================================================
+  if (!window.Flowers) {
+    console.warn("⚠ Цветник не найден, создаю...");
+    window.Flowers = {
+      catalog: [
+        { name:"Астра", icon:"🌼", type:"Однолетник", sow:"Март-апрель", plant:"Май", bloom:"Август-октябрь", care:"Солнце, умеренный полив", tip:"Пикировать при 2 листьях." },
+        { name:"Бархатцы", icon:"🌼", type:"Однолетник", sow:"Апрель-май", plant:"Май-июнь", bloom:"Июнь-октябрь", care:"Солнце, любой грунт", tip:"Защитники огорода — сажай по краям грядок." },
+        { name:"Петуния", icon:"🌺", type:"Однолетник", sow:"Февраль", plant:"Май-июнь", bloom:"Июнь-октябрь", care:"Солнце, обильный полив", tip:"Прищипывай — будет куститься." },
+        { name:"Календула", icon:"🌼", type:"Однолетник", sow:"Апрель-май", plant:"Май-июнь", bloom:"Июнь-октябрь", care:"Солнце, любой грунт", tip:"Лекарственное! Собирай цветки." },
+        { name:"Настурция", icon:"🌺", type:"Однолетник", sow:"Май", plant:"Май-июнь", bloom:"Июнь-сентябрь", care:"Солнце, бедная почва", tip:"Съедобные цветы и листья!" },
+        { name:"Василёк", icon:"💙", type:"Однолетник", sow:"Апрель", plant:"—", bloom:"Июнь-сентябрь", care:"Солнце, дренаж", tip:"Лекарственное — для ЖКТ." },
+        { name:"Космея", icon:"🌸", type:"Однолетник", sow:"Апрель-май", plant:"—", bloom:"Июль-октябрь", care:"Солнце, любой грунт", tip:"Самосев." },
+        { name:"Цинния", icon:"🌸", type:"Однолетник", sow:"Апрель", plant:"Июнь", bloom:"Июль-октябрь", care:"Солнце, полив", tip:"Не любит пересадку." },
+        { name:"Пион", icon:"🌸", type:"Многолетник", sow:"—", plant:"Август-сентябрь", bloom:"Май-июнь", care:"Солнце, дренаж, калий", tip:"Не заглублять корневище!" },
+        { name:"Ирис", icon:"🌸", type:"Многолетник", sow:"—", plant:"Август-сентябрь", bloom:"Май-июнь", care:"Солнце, дренаж", tip:"Раз в 3 года делить." },
+        { name:"Тюльпан", icon:"🌷", type:"луковичный", sow:"—", plant:"Сентябрь-октябрь", bloom:"Апрель-май", care:"Солнце, полив весной", tip:"Выкапывать ежегодно." },
+        { name:"Нарцисс", icon:"🌼", type:"луковичный", sow:"—", plant:"Сентябрь", bloom:"Апрель-май", care:"Солнце/полутень", tip:"Не выкапывать 3–5 лет." },
+        { name:"Гиацинт", icon:"💜", type:"луковичный", sow:"—", plant:"Сентябрь-октябрь", bloom:"Апрель-май", care:"Солнце, дренаж", tip:"Аромат сильный." },
+        { name:"Лилейник", icon:"🌼", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Июнь-сентябрь", care:"Солнце/полутень", tip:"Самый неприхотливый." },
+        { name:"Флокс", icon:"🌸", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Июнь-сентябрь", care:"Солнце, полив", tip:"«Фитоспорин» от мучнистой росы." },
+        { name:"Астильба", icon:"🌸", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Июнь-август", care:"Полутень, влажно", tip:"Любит тень." },
+        { name:"Хоста", icon:"🌿", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Июль-август", care:"Тень, полив", tip:"Декоративна листьями." },
+        { name:"Роза", icon:"🌹", type:"Многолетник", sow:"—", plant:"Апрель-май", bloom:"Июнь-октябрь", care:"Солнце, дренаж, обрезка", tip:"Обрезать весной до 3–5 почек." },
+        { name:"Клематис", icon:"💜", type:"лиана", sow:"—", plant:"Апрель-май", bloom:"Июнь-сентябрь", care:"Солнце, дренаж", tip:"Корни в тени, верхушки на солнце." },
+        { name:"Гортензия", icon:"💙", type:"Многолетник", sow:"—", plant:"Апрель-май", bloom:"Июль-сентябрь", care:"Полутень, кислая почва", tip:"Цвет зависит от pH." },
+        { name:"Лаванда", icon:"💜", type:"Многолетник", sow:"—", plant:"Апрель-май", bloom:"Июнь-август", care:"Солнце, дренаж", tip:"Обрезка после цветения." },
+        { name:"Эхинацея", icon:"🌼", type:"Многолетник", sow:"—", plant:"Апрель-май", bloom:"Июнь-сентябрь", care:"Солнце, дренаж", tip:"Лекарственная!" },
+        { name:"Лилия", icon:"🌷", type:"луковичный", sow:"—", plant:"Сентябрь", bloom:"Июнь-август", care:"Солнце, дренаж", tip:"Не заглублять." },
+        { name:"Гладиолус", icon:"🌸", type:"луковичный", sow:"—", plant:"Апрель-май", bloom:"Июль-сентябрь", care:"Солнце, полив, подвязка", tip:"Выкапывать ежегодно!" },
+        { name:"Георгин", icon:"🌺", type:"Многолетник", sow:"—", plant:"Май-июнь", bloom:"Июль-октябрь", care:"Солнце, полив", tip:"Выкапывать после заморозков." },
+        { name:"Крокус", icon:"💜", type:"луковичный", sow:"—", plant:"Сентябрь-октябрь", bloom:"Март-апрель", care:"Солнце, дренаж", tip:"Первый весенний цветок." },
+        { name:"Мускари", icon:"💙", type:"луковичный", sow:"—", plant:"Сентябрь", bloom:"Апрель-май", care:"Солнце, дренаж", tip:"Синие свечки." },
+        { name:"Аллиум", icon:"💜", type:"луковичный", sow:"—", plant:"Сентябрь", bloom:"Май-июнь", care:"Солнце, дренаж", tip:"Отпугивает вредителей." },
+        { name:"Виола", icon:"💜", type:"Двулетник", sow:"Июнь-июль", plant:"Август-сентябрь", bloom:"Апрель-июнь", care:"Солнце/полутень", tip:"Съедобные цветы!" },
+        { name:"Маргаритка", icon:"🤍", type:"Двулетник", sow:"Июнь-июль", plant:"Август-сентябрь", bloom:"Апрель-июнь", care:"Солнце/полутень", tip:"Зимует под снегом." },
+        { name:"Маттиола", icon:"💜", type:"Однолетник", sow:"Апрель", plant:"Май-июнь", bloom:"Июнь-сентябрь", care:"Солнце, дренаж", tip:"Сильный аромат вечером." },
+        { name:"Люпин", icon:"💜", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Июнь-июль", care:"Солнце, дренаж", tip:"Обогащает почву азотом." },
+        { name:"Дельфиниум", icon:"💙", type:"Многолетник", sow:"—", plant:"Апрель-май", bloom:"Июнь-июль", care:"Солнце, дренаж, подвязка", tip:"⚠ Ядовит!" },
+        { name:"Аквилегия", icon:"💙", type:"Многолетник", sow:"—", plant:"Апрель-сентябрь", bloom:"Май-июль", care:"Полутень, полив", tip:"Очень неприхотлива." },
+        { name:"Ромашка садовая", icon:"🌼", type:"Многолетник", sow:"Май", plant:"—", bloom:"Июнь-сентябрь", care:"Солнце, полив", tip:"Раз в 2 года делить." }
+      ],
+      render(containerId) {
+        const wrap = document.getElementById(containerId);
+        if (!wrap) return;
+        const myFlowers = Store.get("flowers_planted", []);
+
+        wrap.innerHTML = `
+          <div class="card success">
+            <div class="card-title">🌸 Цветник</div>
+            <p class="text-sm">${this.catalog.length} цветов. Нажми на любой — увидишь детали и сможешь добавить в свои.</p>
+          </div>
+          <div class="chips" id="flower-cats">
+            <span class="chip active" data-flt="all">Все</span>
+            <span class="chip" data-flt="Однолетник">Однолетние</span>
+            <span class="chip" data-flt="Двулетник">Двулетние</span>
+            <span class="chip" data-flt="Многолетник">Многолетние</span>
+            <span class="chip" data-flt="луковичный">Луковичные</span>
+            <span class="chip" data-flt="лиана">Лианы</span>
+          </div>
+          <div class="field mb-12">
+            <input type="text" id="flower-search" placeholder="🔍 Найти цветок..." style="width:100%;padding:11px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          </div>
+          ${myFlowers.length ? `
+            <div class="card info">
+              <div class="card-title">🌱 Мои цветы (${myFlowers.length})</div>
+              <div class="list">
+                ${myFlowers.map(f => `
+                  <div class="list-item">
+                    <span class="li-icon">${f.icon || "🌸"}</span>
+                    <div class="li-body">
+                      <div class="li-title">${Utils.escape(f.name)}</div>
+                      <div class="li-sub">${f.place || ""}${f.planted ? " · " + Utils.fmtDate(f.planted) : ""}</div>
+                    </div>
+                    <button class="li-btn" data-fl-del="${f.id}">🗑</button>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          ` : ""}
+          <div id="flower-list"></div>
+        `;
+
+        this.renderList("all");
+        const searchInp = document.getElementById("flower-search");
+        searchInp.addEventListener("input", Utils.debounce(() => {
+          const q = searchInp.value.trim().toLowerCase();
+          const active = document.querySelector("#flower-cats .chip.active");
+          this.renderList(active?.dataset.flt || "all", q);
+        }, 250));
+        document.querySelectorAll("#flower-cats .chip").forEach(chip => {
+          chip.addEventListener("click", () => {
+            document.querySelectorAll("#flower-cats .chip").forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            this.renderList(chip.dataset.flt);
+          });
+        });
+        wrap.querySelectorAll("[data-fl-del]").forEach(b => {
+          b.addEventListener("click", () => {
+            if (!confirm("Удалить?")) return;
+            Store.set("flowers_planted", Store.get("flowers_planted", []).filter(f => f.id !== b.dataset.flDel));
+            this.render(containerId);
+          });
+        });
+      },
+      renderList(filter, query = "") {
+        const wrap = document.getElementById("flower-list");
+        if (!wrap) return;
+        let list = this.catalog.slice();
+        if (filter && filter !== "all") list = list.filter(f => (f.type || "").includes(filter));
+        if (query) list = list.filter(f => JSON.stringify(f).toLowerCase().includes(query));
+
+        if (!list.length) {
+          wrap.innerHTML = `<div class="empty"><span class="emoji">🌸</span><p>Ничего не найдено</p></div>`;
+          return;
+        }
+
+        wrap.innerHTML = `
+          <div class="text-muted text-xs mb-8">Найдено: ${list.length}</div>
+          ${list.map((f, i) => `
+            <div class="accordion" data-fl-index="${i}">
+              <div class="accordion-head">${f.icon} ${Utils.escape(f.name)}
+                <span class="badge badge-info" style="margin-left:auto;font-size:10px">${Utils.escape(f.type)}</span>
+                <span class="arrow">▶</span>
+              </div>
+              <div class="accordion-body">
+                <p><b>Посев:</b> ${Utils.escape(f.sow)}</p>
+                <p><b>Посадка:</b> ${Utils.escape(f.plant)}</p>
+                <p><b>Цветение:</b> ${Utils.escape(f.bloom)}</p>
+                <p><b>Уход:</b> ${Utils.escape(f.care)}</p>
+                <p style="color:var(--green-700)"><b>💡</b> ${Utils.escape(f.tip)}</p>
+                <button class="btn btn-primary btn-sm btn-block mt-12" data-fl-add="${i}">+ Добавить в мои цветы</button>
+              </div>
+            </div>
+          `).join("")}
+        `;
+        wrap.querySelectorAll(".accordion").forEach(acc => {
+          const head = acc.querySelector(".accordion-head");
+          head.addEventListener("click", (e) => {
+            if (e.target.closest("[data-fl-add]")) return;
+            acc.classList.toggle("open");
+          });
+        });
+        wrap.querySelectorAll("[data-fl-add]").forEach(b => {
+          b.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const f = list[+b.dataset.flAdd];
+            this.openAdd(f);
+          });
+        });
+      },
+      openAdd(f) {
+        Modal.open("Добавить: " + f.name, `
+          <div class="field"><label>Где посажен</label><input id="fa-place" placeholder="У забора / клумба"></div>
+          <div class="field"><label>Дата посадки</label><input type="date" id="fa-planted" value="${Utils.todayISO()}"></div>
+          <div class="field"><label>Заметка</label><textarea id="fa-note"></textarea></div>
+          <button class="btn btn-primary btn-block" id="fa-save">Добавить</button>
+        `, () => {
+          document.getElementById("fa-save").addEventListener("click", () => {
+            const list = Store.get("flowers_planted", []);
+            list.push({
+              id: Utils.uid(),
+              name: f.name,
+              icon: f.icon,
+              place: document.getElementById("fa-place").value.trim(),
+              planted: document.getElementById("fa-planted").value,
+              note: document.getElementById("fa-note").value.trim()
+            });
+            Store.set("flowers_planted", list);
+            Modal.close();
+            Toast.show("Добавлено", "success");
+            if (window.Router) Router.go("garden");
+            setTimeout(() => {
+              const chip = document.querySelector('#garden-tabs .chip[data-tab="flowers"]');
+              if (chip) chip.click();
+            }, 250);
+          });
+        });
+      }
+    };
+    console.log("✅ Цветник загружен fallback-версией");
+  }
+
+  // ============================================================
+  // 8. ДОБАВЛЯЕМ ЧИПСУ ЦВЕТНИК В ОГОРОД
+  // ============================================================
+  const gardenTabs = document.getElementById("garden-tabs");
+  if (gardenTabs && !gardenTabs.dataset.flowersFixed) {
+    gardenTabs.dataset.flowersFixed = "1";
+    if (!gardenTabs.querySelector('[data-tab="flowers"]')) {
+      gardenTabs.insertAdjacentHTML("beforeend", `<span class="chip" data-tab="flowers">🌸 Цветник</span>`);
+    }
+  }
+
+  // Перехватываем роутинг огорода — если чипсы не срабатывают
+  if (window.Garden) {
+    const origRender = Garden.render.bind(Garden);
+    Garden.render = function() {
+      try {
+        origRender();
+      } catch (e) {
+        console.error("Ошибка Garden.render:", e);
+        // Fallback: просто показываем табы
+        const c = document.getElementById("garden-content");
+        if (c) c.innerHTML = `<div class="card danger"><div class="card-title">Ошибка загрузки</div><p class="text-sm">Перезагрузи страницу</p></div>`;
+      }
+    };
+    // Перехват renderTab
+    if (Garden.renderTab) {
+      const origTab = Garden.renderTab.bind(Garden);
+      Garden.renderTab = function(tab) {
+        if (tab === "flowers") {
+          window.Flowers.render("garden-content");
+          return;
+        }
+        try {
+          origTab(tab);
+        } catch (e) {
+          console.error("Ошибка Garden.renderTab:", tab, e);
+          const c = document.getElementById("garden-content");
+          if (c) c.innerHTML = `<div class="card danger"><div class="card-title">Ошибка</div><p class="text-sm">${Utils.escape(String(e))}</p></div>`;
+        }
+      };
+    }
+  }
+
+  // ============================================================
+  // 9. ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКА ПО ЧИПСАМ — ДЛЯ ВСЕХ РАЗДЕЛОВ
+  // ============================================================
+  document.body.addEventListener("click", function(e) {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    const parent = chip.parentElement;
+    if (!parent || !parent.classList.contains("chips")) return;
+    // Переключаем active
+    parent.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    // НЕ вызываем рендер — это делают модули через свои обработчики
+  }, true);
+
+  // ============================================================
+  // 10. ФИНАЛЬНАЯ ПРОВЕРКА
+  // ============================================================
+  setTimeout(() => {
+    const modules = {
+      "Советник": window.Advisor,
+      "Ремесло": window.Crafts,
+      "Добыча": window.Resources,
+      "Цветник": window.Flowers,
+      "Огород": window.Garden,
+      "Пасека": window.Bees,
+      "Живность": window.Livestock,
+      "Финансы": window.Finance,
+      "Стройка": window.Build,
+      "Инженерия": window.Engineering,
+      "Погреб": window.Cellar,
+      "Переработка": window.Process,
+      "Инвентарь": window.Inventory,
+      "Аптека": window.Medicine,
+      "Грибы": window.Mushrooms,
+      "Карта": window.MapScreen,
+      "Погода": window.Weather,
+      "Календарь": window.CalendarScreen,
+      "Знания": window.Knowledge,
+      "Экстренно": window.Emergency,
+      "Семья": window.Family,
+      "Питомцы": window.Pets,
+      "Фото": window.Photos,
+      "Маркет": window.Market,
+      "Школа": window.School,
+      "Грабли": window.Mistakes,
+      "Регламенты": window.Maintenance,
+      "Умный урожай": window.Smart
+    };
+    console.log("========== СТАТУС МОДУЛЕЙ ==========");
+    Object.entries(modules).forEach(([name, m]) => {
+      console.log("  " + (m ? "✅" : "❌") + " " + name);
+    });
+
+    const screens = Array.from(document.querySelectorAll(".screen"));
+    console.log("📱 Экранов в DOM:", screens.length);
+
+    console.log("========== ГОТОВО ==========");
+    console.log("Открой раздел, который не работает — теперь должно всё работать.");
+    console.log("Если что-то ещё — напиши название раздела и кнопки.");
+
+    if (window.Toast) Toast.show("Фикс применён", "success");
+  }, 1000);
+
+  console.log("✅ Финальный фикс применён");
+})();
+</script>
 </body>
 </html>
