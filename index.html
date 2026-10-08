@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+=<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -8491,6 +8491,3313 @@ window.DVOR = {
 
 console.log("💡 Подсказка: введи DVOR.help() в консоли");
 </script>
+<!-- ============================================= -->
+<!-- РАСШИРЕНИЕ БЛОК 1: ФИКС + ДАШБОРД + PDF + ГРАФИКИ -->
+<!-- ============================================= -->
 
+<script>
+"use strict";
+
+/* =========================================================
+   1. ФИКС СОВЕТНИКА
+   ========================================================= */
+(function fixAdvisor() {
+  if (!document.getElementById("screen-advisor")) {
+    const anchor = document.getElementById("screen-finance");
+    if (anchor) {
+      const div = document.createElement("section");
+      div.className = "screen";
+      div.id = "screen-advisor";
+      anchor.parentNode.insertBefore(div, anchor);
+    }
+  }
+
+  window.ScreenHooks = window.ScreenHooks || {};
+  window.ScreenHooks.advisor = function() {
+    const el = document.getElementById("screen-advisor");
+    if (!el) return;
+    if (window.Advisor && typeof Advisor.renderScreen === "function") {
+      Advisor.renderScreen();
+    } else {
+      el.innerHTML = `<div class="loader"></div>`;
+      setTimeout(() => {
+        if (window.Advisor) Advisor.renderScreen();
+        else el.innerHTML = `<div class="card danger"><div class="card-title">Ошибка</div>
+          <p class="text-sm">Модуль Советника не загрузился.</p></div>`;
+      }, 300);
+    }
+  };
+
+  console.log("🩹 Фикс Советника применён");
+})();
+
+/* =========================================================
+   2. ДАШБОРД НА ГЛАВНОЙ — КРАСИВЫЙ ОБЗОР
+   ========================================================= */
+const Dashboard = {
+  render(containerSel) {
+    const el = document.querySelector(containerSel);
+    if (!el) return;
+
+    const tx = Store.get("economy_tx", []);
+    const now = new Date();
+    const monthTx = tx.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const income = monthTx.filter(t => t.type === "income").reduce((s, t) => s + (+t.amount || 0), 0);
+    const expense = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + (+t.amount || 0), 0);
+    const balance = income - expense;
+
+    const goals = Store.get("finance_goals", []);
+    const reserve = Store.get("finance_reserve", { current: 0, target: 0 });
+
+    const tasks = Store.get("family_tasks", []).filter(t => !t.done);
+    const overdue = tasks.filter(t => t.date && t.date < Utils.todayISO());
+
+    const deadlines = window.Deadlines ? Deadlines.getUpcoming(7) : [];
+
+    const advisorAdvice = window.Advisor ? Advisor.getAll() : [];
+    const criticalAdvice = advisorAdvice.filter(a => a.level === "critical").length;
+
+    // --- Кольцевые диаграммы ---
+    const ringPct = (val, max) => max > 0 ? Math.min(100, Math.round(val / max * 100)) : 0;
+    const ring = (pct, color, label, value) => {
+      const r = 30, c = 2 * Math.PI * r;
+      const dash = c * pct / 100;
+      return `
+        <div style="text-align:center;flex:1">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="6"
+              stroke-dasharray="${dash} ${c}" stroke-linecap="round"
+              transform="rotate(-90 40 40)"/>
+            <text x="40" y="45" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text)">${pct}%</text>
+          </svg>
+          <div class="text-xs text-muted">${label}</div>
+          <div class="text-xs text-bold">${value}</div>
+        </div>
+      `;
+    };
+
+    const budgetPlan = Store.get("finance_budget", {});
+    const planInc = +budgetPlan["inc_" + now.getMonth()] || 0;
+    const planExp = +budgetPlan["exp_" + now.getMonth()] || 0;
+    const incomePct = planInc > 0 ? ringPct(income, planInc) : 0;
+    const expensePct = planExp > 0 ? ringPct(expense, planExp) : 0;
+
+    const reservePct = ringPct(reserve.current, reserve.target);
+    const taskPct = tasks.length > 0 ? ringPct(Store.get("family_tasks", []).filter(t => t.done).length, Store.get("family_tasks", []).length) : 0;
+
+    el.innerHTML = `
+      <div class="card success">
+        <div class="card-title">📊 Дашборд · ${Utils.monthName(now.getMonth())} ${now.getFullYear()}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          ${ring(incomePct, "var(--green-600)", "Доход", Utils.formatNumber(income) + " ₽")}
+          ${ring(expensePct, "var(--danger)", "Расход", Utils.formatNumber(expense) + " ₽")}
+          ${ring(reservePct, "var(--honey)", "Резерв", Utils.formatNumber(reserve.current) + " ₽")}
+          ${ring(taskPct, "var(--info)", "Задачи", (Store.get("family_tasks", []).length - tasks.length) + "/" + Store.get("family_tasks", []).length)}
+        </div>
+        <div class="divider"></div>
+        <div class="row between">
+          <div class="text-sm">
+            <b style="color:${balance >= 0 ? 'var(--green-700)' : 'var(--danger)'}">
+              ${balance >= 0 ? "+" : ""}${Utils.formatNumber(balance)} ₽
+            </b>
+            <span class="text-muted text-xs">баланс месяца</span>
+          </div>
+          <div class="text-sm">
+            <b>${tasks.length}</b>
+            <span class="text-muted text-xs">открытых задач${overdue.length ? " · ⚠ " + overdue.length + " просрочено" : ""}</span>
+          </div>
+        </div>
+      </div>
+
+      ${criticalAdvice > 0 ? `
+        <div class="card danger">
+          <div class="card-title">⚠ ${criticalAdvice} ${Utils.plural(criticalAdvice, "важный совет", "важных совета", "важных советов")}</div>
+          <button class="btn btn-danger btn-sm btn-block" onclick="Router.go('advisor')">Открыть Советник</button>
+        </div>
+      ` : ""}
+
+      ${deadlines.length ? `
+        <div class="card info">
+          <div class="card-title">⏳ Ближайшие 7 дней (${deadlines.length})</div>
+          ${deadlines.slice(0, 4).map(d => {
+            const days = Utils.daysUntil(d.date);
+            const cls = days <= 1 ? "badge-danger" : days <= 3 ? "badge-warn" : "badge-info";
+            return `<div class="row between" style="padding:5px 0">
+              <span class="text-sm">${d.icon || "📅"} ${Utils.escape(d.title)}</span>
+              <span class="badge ${cls}">${days === 0 ? "сегодня" : days === 1 ? "завтра" : days + " дн."}</span>
+            </div>`;
+          }).join("")}
+          ${deadlines.length > 4 ? `<button class="btn btn-secondary btn-sm btn-block mt-8" onclick="Router.go('deadlines')">Все дедлайны</button>` : ""}
+        </div>
+      ` : ""}
+
+      ${goals.length ? `
+        <div class="card warn">
+          <div class="card-title">🎯 Прогресс целей</div>
+          ${goals.slice(0, 3).map(g => {
+            const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+            return `<div style="margin-bottom:10px">
+              <div class="row between">
+                <span class="text-sm">${Utils.escape(g.name)}</span>
+                <span class="text-xs text-muted">${pct}%</span>
+              </div>
+              <div class="progress"><div class="progress-bar honey" style="width:${pct}%"></div></div>
+            </div>`;
+          }).join("")}
+        </div>
+      ` : ""}
+    `;
+  }
+};
+
+window.Dashboard = Dashboard;
+
+/* =========================================================
+   3. PDF/ПЕЧАТЬ ОТДЕЛЬНЫХ КАРТОЧЕК
+   ========================================================= */
+const Print = {
+  section(title, html) {
+    const w = window.open("", "_blank");
+    if (!w) { Toast.show("Разреши всплывающие окна", "danger"); return; }
+    w.document.write(`
+      <!DOCTYPE html>
+      <html lang="ru"><head>
+        <meta charset="UTF-8">
+        <title>${Utils.escape(title)} — ДВОР</title>
+        <style>
+          body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:auto;color:#222;line-height:1.5}
+          h1{color:#2d5016;border-bottom:2px solid #2d5016;padding-bottom:8px}
+          h2{color:#3d6b1f;font-size:18px;margin-top:20px}
+          .item{padding:8px 0;border-bottom:1px solid #eee}
+          .item b{display:block}
+          .item span{color:#666;font-size:13px}
+          .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#e8f5dc;color:#1a3309;margin-left:8px}
+          .footer{margin-top:40px;text-align:center;color:#999;font-size:12px;border-top:1px solid #eee;padding-top:12px}
+          @media print{ body{padding:0} }
+        </style>
+      </head><body>
+        <h1>🌾 ${Utils.escape(title)}</h1>
+        <div style="color:#999;font-size:12px;margin-bottom:16px">Двор · ${new Date().toLocaleString("ru-RU")}</div>
+        ${html}
+        <div class="footer">Распечатано из приложения «ДВОР»</div>
+        <script>setTimeout(() => window.print(), 500);<\/script>
+      </body></html>
+    `);
+    w.document.close();
+  },
+
+  // Печать чек-листа сезонных работ
+  seasonChecklist(season) {
+    const data = {
+      spring:["Проверить инвентарь","Закупить семена","Посеять рассаду","Подготовить теплицу","Перекопать грядки","Внести компост","Посадить ранние культуры","Обработать сад от вредителей"],
+      summer:["Поливать через день","Пропалывать","Подкармливать каждые 10 дней","Обрабатывать от вредителей","Пасынковать томаты","Собирать урожай","Заготавливать варенья","Косить траву"],
+      autumn:["Убрать урожай","Посеять сидераты","Убрать ботву","Перекопать","Внести удобрения","Заготовить дрова","Утеплить теплицу","Посадить озимые"],
+      winter:["Проверить семена","Спланировать посадки","Заготовить ящики","Ремонт инвентаря","Собрать золу","Проверить погреб","Ревизия запасов","Купить семена"]
+    };
+    const items = data[season] || data.spring;
+    const names = { spring:"Весна", summer:"Лето", autumn:"Осень", winter:"Зима" };
+    this.section("Сезонные работы: " + names[season],
+      items.map(i => `<div class="item"><input type="checkbox"> ${Utils.escape(i)}</div>`).join("")
+    );
+  },
+
+  // Печать погреба
+  cellar() {
+    const stock = Store.get("cellar_stock", []);
+    this.section("Запасы в погребе",
+      stock.map(s => `<div class="item"><b>${Utils.escape(s.name)}</b>
+        <span>${Utils.escape(s.qty || "")} · ${Utils.escape(s.place || "")}${s.exp ? " · до " + Utils.fmtDate(s.exp) : ""}</span></div>`).join("")
+    );
+  },
+
+  // Печать списка контактов
+  contacts() {
+    const meds = Store.get("med_contacts", []);
+    const fam = Store.get("family_contacts", []);
+    const all = [...meds, ...fam];
+    this.section("Экстренные контакты",
+      all.map(c => `<div class="item"><b>${Utils.escape(c.name)}</b>
+        <span>${Utils.escape(c.role || "")} · ${Utils.escape(c.phone)}${c.address ? " · " + Utils.escape(c.address) : ""}</span></div>`).join("")
+    );
+  },
+
+  // Печать сметы
+  estimate() {
+    const items = Store.get("build_estimate", []);
+    const total = items.reduce((s, x) => s + (+x.total || 0), 0);
+    const paid = items.filter(x => x.paid === "Да").reduce((s, x) => s + (+x.total || 0), 0);
+    this.section("Смета",
+      items.map(i => `<div class="item"><b>${Utils.escape(i.name)}</b>
+        <span>${Utils.escape(i.qty || "")} · ${Utils.formatNumber(i.total)} ₽ · ${i.paid === "Да" ? "✓ оплачено" : "не оплачено"}</span></div>`).join("") +
+      `<h2>Итого: ${Utils.formatNumber(total)} ₽ · Оплачено: ${Utils.formatNumber(paid)} ₽</h2>`
+    );
+  },
+
+  // Печать справочника покупок (что нужно купить)
+  shopping() {
+    const items = [];
+    const lowStock = Store.get("cellar_stock", []).filter(s => s.exp && Utils.daysUntil(s.exp) < 30);
+    lowStock.forEach(s => items.push(`Пополнить: ${s.name}`));
+    const medExpired = Store.get("med_kit", []).filter(m => m.exp && Utils.daysUntil(m.exp) < 30);
+    medExpired.forEach(m => items.push(`Купить лекарство: ${m.name}`));
+    if (!items.length) items.push("Ничего не нужно — всё в порядке!");
+    this.section("Список покупок",
+      items.map(i => `<div class="item"><input type="checkbox"> ${Utils.escape(i)}</div>`).join("")
+    );
+  }
+};
+
+window.Print = Print;
+
+/* =========================================================
+   4. РАСШИРЕННЫЕ ГРАФИКИ — SVG без библиотек
+   ========================================================= */
+const Charts = {
+  // Линия с маркерами и подписями
+  line(data, opts = {}) {
+    if (!data || data.length < 2) return `<div class="text-muted text-sm">Нужно 2+ точки</div>`;
+    const W = 340, H = 140, padL = 40, padR = 10, padT = 15, padB = 25;
+    const values = data.map(d => +d.value || 0);
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = max - min || 1;
+    const step = (W - padL - padR) / (data.length - 1);
+    const color = opts.color || "var(--green-600)";
+    
+    let path = "";
+    let area = "";
+    let points = "";
+    let labels = "";
+
+    data.forEach((d, i) => {
+      const x = padL + i * step;
+      const y = padT + (H - padT - padB) - ((+d.value - min) / range) * (H - padT - padB);
+      path += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+      points += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}"><title>${Utils.escape(d.label || "")}: ${d.value}</title></circle>`;
+      if (data.length <= 10 || i % Math.ceil(data.length / 7) === 0) {
+        labels += `<text x="${x.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9" fill="var(--text-muted)">${Utils.escape((d.label || "").slice(0, 6))}</text>`;
+      }
+    });
+
+    area = path + `L${padL + (data.length - 1) * step},${H - padB} L${padL},${H - padB} Z`;
+
+    let grid = "";
+    for (let i = 0; i <= 3; i++) {
+      const y = padT + (H - padT - padB) * (i / 3);
+      const v = max - (max - min) * (i / 3);
+      grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-dasharray="2 3"/>`;
+      grid += `<text x="${padL - 5}" y="${y + 3}" text-anchor="end" font-size="9" fill="var(--text-muted)">${Math.round(v)}</text>`;
+    }
+
+    return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:auto">
+      ${grid}
+      <path d="${area}" fill="${color}" opacity="0.15"/>
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>
+      ${points}
+      ${labels}
+    </svg></div>`;
+  },
+
+  // Столбцы
+  bar(data, opts = {}) {
+    if (!data || !data.length) return `<div class="text-muted text-sm">Нет данных</div>`;
+    const W = 340, H = 140, padL = 40, padR = 10, padT = 15, padB = 25;
+    const max = Math.max(...data.map(d => +d.value || 0), 1);
+    const barW = (W - padL - padR) / data.length - 3;
+    const color = opts.color || "var(--green-600)";
+    let bars = "";
+    let labels = "";
+    data.forEach((d, i) => {
+      const h = ((+d.value || 0) / max) * (H - padT - padB);
+      const x = padL + i * (barW + 3);
+      const y = H - padB - h;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${color}"><title>${Utils.escape(d.label || "")}: ${d.value}</title></rect>`;
+      if (data.length <= 15) {
+        labels += `<text x="${(x + barW / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="9" fill="var(--text-muted)">${Utils.escape((d.label || "").slice(0, 5))}</text>`;
+      }
+    });
+    let grid = "";
+    for (let i = 0; i <= 3; i++) {
+      const y = padT + (H - padT - padB) * (i / 3);
+      const v = max - max * (i / 3);
+      grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-dasharray="2 3"/>`;
+      grid += `<text x="${padL - 5}" y="${y + 3}" text-anchor="end" font-size="9" fill="var(--text-muted)">${Math.round(v)}</text>`;
+    }
+    return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:auto">
+      ${grid}${bars}${labels}
+    </svg></div>`;
+  },
+
+  // Пончик (pie)
+  donut(data, opts = {}) {
+    if (!data || !data.length) return `<div class="text-muted text-sm">Нет данных</div>`;
+    const total = data.reduce((s, d) => s + (+d.value || 0), 0);
+    if (total === 0) return `<div class="text-muted text-sm">Нулевые значения</div>`;
+    const colors = opts.colors || ["var(--green-600)","var(--honey)","var(--danger)","var(--info)","var(--purple)","var(--warning)"];
+    const r = 50, c = 2 * Math.PI * r;
+    let acc = 0;
+    let segments = "";
+    data.forEach((d, i) => {
+      const pct = (+d.value / total) * 100;
+      const dash = c * pct / 100;
+      segments += `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="20"
+        stroke-dasharray="${dash} ${c - dash}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"><title>${Utils.escape(d.label)}: ${Math.round(pct)}%</title></circle>`;
+      acc += dash;
+    });
+    return `<div style="text-align:center">
+      <svg viewBox="0 0 120 120" width="140" height="140">${segments}
+        <text x="60" y="65" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text)">${Utils.formatNumber(total)}</text>
+      </svg>
+      <div class="row wrap" style="justify-content:center;gap:8px;margin-top:8px;font-size:12px">
+        ${data.map((d, i) => `<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};margin-right:4px"></span>${Utils.escape(d.label)} (${Math.round(d.value / total * 100)}%)</div>`).join("")}
+      </div>
+    </div>`;
+  }
+};
+
+window.Charts = Charts;
+
+/* =========================================================
+   5. ПОДМЕНА ГРАФИКОВ В СУЩЕСТВУЮЩИХ МОДУЛЯХ
+   ========================================================= */
+
+// Трекер (TrackEngine) — использовать новый график
+if (window.TrackEngine && TrackEngine.mount) {
+  const origTrack = TrackEngine.mount.bind(TrackEngine);
+  TrackEngine.mount = function(containerId, config) {
+    origTrack(containerId, config);
+    // После рендера заменяем SVG на Charts.line
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    setTimeout(() => {
+      const chartEl = wrap.querySelector(".chart");
+      if (!chartEl) return;
+      const log = Store.get(config.storeKey, {});
+      const week = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - i));
+        const iso = d.toISOString().slice(0, 10);
+        return { label: iso.slice(8), value: log[iso] || 0 };
+      });
+      const parent = chartEl.parentNode;
+      parent.innerHTML = parent.querySelector(".card-title")?.outerHTML + Charts.bar(week, { color: config.chartColor || "var(--honey)" });
+    }, 100);
+  };
+}
+
+/* =========================================================
+   6. ДОБАВЛЯЕМ ДАШБОРД В ГЛАВНУЮ
+   ========================================================= */
+if (window.Home && Home.render) {
+  const origHome = Home.render.bind(Home);
+  Home.render = function() {
+    origHome();
+    // Вставляем дашборд первым блоком
+    const main = document.querySelector("#screen-home");
+    if (!main) return;
+    if (!document.getElementById("dashboard-wrap")) {
+      const div = document.createElement("div");
+      div.id = "dashboard-wrap";
+      main.insertBefore(div, main.firstChild.nextSibling); // после h1
+    }
+    Dashboard.render("#dashboard-wrap");
+  };
+}
+
+/* =========================================================
+   7. КНОПКИ ПЕЧАТИ В РАЗДЕЛАХ
+   ========================================================= */
+function addPrintButtons() {
+  // В погребе
+  const cellarCard = document.querySelector("#cellar-content .card");
+  if (cellarCard && !cellarCard.dataset.printBtn) {
+    cellarCard.dataset.printBtn = "1";
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary btn-sm mt-8 btn-block";
+    btn.textContent = "🖨 Распечатать список запасов";
+    btn.onclick = () => Print.cellar();
+    cellarCard.appendChild(btn);
+  }
+
+  // В контактах (аптека)
+  const medCard = document.querySelector("#med-contacts-wrap");
+  if (medCard && !medCard.dataset.printBtn) {
+    medCard.dataset.printBtn = "1";
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary btn-sm mt-8 btn-block";
+    btn.textContent = "🖨 Распечатать контакты";
+    btn.onclick = () => Print.contacts();
+    medCard.parentNode.insertBefore(btn, medCard.nextSibling);
+  }
+
+  // В смете стройки
+  const estCard = document.querySelector("#build-est-wrap");
+  if (estCard && !estCard.dataset.printBtn) {
+    estCard.dataset.printBtn = "1";
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary btn-sm mt-8 btn-block";
+    btn.textContent = "🖨 Распечатать смету";
+    btn.onclick = () => Print.estimate();
+    estCard.parentNode.insertBefore(btn, estCard.nextSibling);
+  }
+}
+
+// Навешиваем кнопки при переходе по разделам
+window.ScreenHooks = window.ScreenHooks || {};
+["cellar", "medicine", "build"].forEach(screen => {
+  const orig = window.ScreenHooks[screen];
+  window.ScreenHooks[screen] = function() {
+    if (orig) orig();
+    setTimeout(addPrintButtons, 500);
+  };
+});
+
+/* =========================================================
+   8. КНОПКИ ПЕЧАТИ СЕЗОННОГО ЧЕК-ЛИСТА
+   ========================================================= */
+if (window.Garden) {
+  const origSeason = Garden.renderSeason.bind(Garden);
+  Garden.renderSeason = function(c) {
+    origSeason.call(Garden, c);
+    // Добавляем кнопку печати
+    const chip = document.querySelector("#garden-season-chips .chip.active");
+    const season = chip ? chip.dataset.season : "spring";
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary btn-sm btn-block mt-12";
+    btn.textContent = "🖨 Распечатать чек-лист";
+    btn.onclick = () => Print.seasonChecklist(season);
+    c.querySelector("#garden-season-check")?.appendChild(btn);
+  };
+}
+
+/* =========================================================
+   9. УМНАЯ ГЛАВНАЯ — «СЕГОДНЯ»
+   ========================================================= */
+const Today = {
+  get() {
+    const items = [];
+    
+    // Погода
+    const weather = Store.get("weather_cache", null);
+    if (weather?.data?.current) {
+      const w = weather.data.current;
+      items.push({
+        icon: w.icon || "🌦",
+        text: `Погода: ${Math.round(w.temp)}°C, ${w.desc}`,
+        action: "weather"
+      });
+      
+      // Заморозки
+      const today = weather.data.daily?.[0];
+      if (today && today.tmin < 3) {
+        items.push({
+          icon: "🥶",
+          text: `Ночью ${Math.round(today.tmin)}°C — укрой теплолюбивые`,
+          action: "garden",
+          level: "critical"
+        });
+      }
+    }
+
+    // Советник
+    if (window.Advisor) {
+      const advice = Advisor.getAll().slice(0, 2);
+      advice.forEach(a => items.push({
+        icon: a.icon,
+        text: a.text,
+        action: "advisor",
+        level: a.level
+      }));
+    }
+
+    // Дедлайны
+    if (window.Deadlines) {
+      const upcoming = Deadlines.getUpcoming(1);
+      upcoming.forEach(d => {
+        const days = Utils.daysUntil(d.date);
+        items.push({
+          icon: d.icon || "⏳",
+          text: `${d.title} — ${days === 0 ? "сегодня" : days === 1 ? "завтра" : "через " + days + " дн."}`,
+          action: "deadlines",
+          level: days === 0 ? "important" : "info"
+        });
+      });
+    }
+
+    // Задачи
+    const tasks = Store.get("family_tasks", []).filter(t => !t.done && (!t.date || t.date <= Utils.todayISO())).slice(0, 3);
+    tasks.forEach(t => items.push({
+      icon: "✅",
+      text: `${t.title}${t.who ? " (" + t.who + ")" : ""}`,
+      action: "family"
+    }));
+
+    return items;
+  },
+
+  render(containerSel) {
+    const el = document.querySelector(containerSel);
+    if (!el) return;
+    const items = this.get();
+    if (!items.length) {
+      el.innerHTML = `<div class="text-muted text-sm">✨ Всё спокойно. Добавь записи — и я начну подсказывать.</div>`;
+      return;
+    }
+    el.innerHTML = items.slice(0, 6).map(it => {
+      const cls = it.level === "critical" ? "badge-danger" : it.level === "important" ? "badge-warn" : "";
+      return `
+        <div class="list-item" onclick="Router.go('${it.action}')" style="cursor:pointer">
+          <span class="li-icon">${it.icon}</span>
+          <div class="li-body"><div class="li-title" style="font-weight:500">${Utils.escape(it.text)}</div></div>
+        </div>
+      `;
+    }).join("");
+  }
+};
+
+window.Today = Today;
+
+// Вставляем блок «Сегодня» в главную
+if (window.Home && Home.render) {
+  const origHome2 = Home.render.bind(Home);
+  Home.render = function() {
+    origHome2();
+    const main = document.querySelector("#screen-home");
+    if (!main) return;
+    if (!document.getElementById("today-wrap")) {
+      const card = document.createElement("div");
+      card.className = "card success";
+      card.id = "today-wrap";
+      card.innerHTML = `<div class="card-title">☀ Сегодня</div><div id="today-body"></div>`;
+      main.insertBefore(card, main.firstChild.nextSibling);
+    }
+    Today.render("#today-body");
+  };
+}
+
+/* =========================================================
+   10. КОМАНДЫ ДЛЯ КОНСОЛИ
+   ========================================================= */
+window.DVOR = window.DVOR || {};
+Object.assign(window.DVOR, {
+  print: {
+    cellar: () => Print.cellar(),
+    contacts: () => Print.contacts(),
+    estimate: () => Print.estimate(),
+    shopping: () => Print.shopping(),
+    season: (s) => Print.seasonChecklist(s || "spring")
+  },
+  charts: Charts
+});
+
+console.log("📊 Блок 1 расширения загружен: Дашборд + PDF + Графики + Сегодня");
+</script>
+<!-- ============================================= -->
+<!-- РАСШИРЕНИЕ БЛОК 2: КАРТА + QR + СХЕМЫ + КАЛЕНДАРЬ -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* =========================================================
+   1. ИНТЕРАКТИВНАЯ КАРТА УЧАСТКА (SVG-canvas)
+   ========================================================= */
+const PlotMap = {
+  // Размеры участка в метрах
+  plotW: 30,
+  plotH: 40,
+  scale: 12, // px на метр
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const W = this.plotW * this.scale;
+    const H = this.plotH * this.scale;
+    const zones = Store.get("plot_zones", []);
+
+    wrap.innerHTML = `
+      <div class="card info">
+        <div class="card-title">🗺 Интерактивная карта участка</div>
+        <p class="text-sm">Клик по зоне — редактировать. Кнопка «+ Зона» — добавить новую.</p>
+        <div class="row wrap mt-8">
+          <button class="btn btn-primary btn-sm" id="plot-add-zone">+ Зона</button>
+          <button class="btn btn-secondary btn-sm" id="plot-size">📐 Размер участка</button>
+          <button class="btn btn-secondary btn-sm" id="plot-clear">🗑 Очистить</button>
+        </div>
+      </div>
+      <div class="card" style="padding:8px;overflow:auto">
+        <svg id="plot-svg" viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block;margin:0 auto;background:#f5ede0;border-radius:8px">
+          <!-- Сетка -->
+          ${this.renderGrid(W, H)}
+          <!-- Зоны -->
+          ${zones.map(z => this.renderZone(z)).join("")}
+          <!-- Компас -->
+          <g transform="translate(${W - 30}, 20)">
+            <polygon points="0,-12 4,6 0,2 -4,6" fill="#c62828"/>
+            <text x="0" y="18" text-anchor="middle" font-size="10" fill="#5c3a21">С</text>
+          </g>
+        </svg>
+      </div>
+      <div id="plot-zones-list" class="list mt-12"></div>
+    `;
+
+    // Обработчики
+    document.getElementById("plot-add-zone").addEventListener("click", () => this.openAddZone());
+    document.getElementById("plot-size").addEventListener("click", () => this.openSizeDialog());
+    document.getElementById("plot-clear").addEventListener("click", () => {
+      if (!confirm("Удалить все зоны?")) return;
+      Store.set("plot_zones", []);
+      this.render(containerId);
+    });
+
+    // Клик по зоне
+    wrap.querySelectorAll("[data-zone-id]").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.zoneId;
+        const z = Store.get("plot_zones", []).find(x => x.id === id);
+        if (z) this.openEditZone(z);
+      });
+    });
+
+    // Список зон
+    const listEl = document.getElementById("plot-zones-list");
+    if (zones.length) {
+      listEl.innerHTML = zones.map(z => `
+        <div class="list-item">
+          <span style="display:inline-block;width:14px;height:14px;background:${z.color || "#4a8528"};border-radius:3px;flex-shrink:0"></span>
+          <div class="li-body">
+            <div class="li-title">${Utils.escape(z.name)}</div>
+            <div class="li-sub">${z.type || ""} · ${z.w}×${z.h} м</div>
+          </div>
+          <button class="li-btn" data-zone-del="${z.id}">🗑</button>
+        </div>
+      `).join("");
+      listEl.querySelectorAll("[data-zone-del]").forEach(b => b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm("Удалить зону?")) return;
+        Store.set("plot_zones", Store.get("plot_zones", []).filter(x => x.id !== b.dataset.zoneDel));
+        this.render(containerId);
+      }));
+    } else {
+      listEl.innerHTML = `<div class="empty"><span class="emoji">🗺</span><p>Пока нет зон. Добавь первую — огород, дом, пасеку</p></div>`;
+    }
+  },
+
+  renderGrid(W, H) {
+    let grid = "";
+    for (let x = 0; x <= W; x += this.scale * 2) {
+      grid += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#d4c4a8" stroke-width="0.5"/>`;
+    }
+    for (let y = 0; y <= H; y += this.scale * 2) {
+      grid += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#d4c4a8" stroke-width="0.5"/>`;
+    }
+    return grid;
+  },
+
+  renderZone(z) {
+    const s = this.scale;
+    const x = z.x * s, y = z.y * s, w = z.w * s, h = z.h * s;
+    return `
+      <g data-zone-id="${z.id}" style="cursor:pointer">
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${z.color || "#4a8528"}" opacity="0.7" rx="3" stroke="#2d5016" stroke-width="1.5"/>
+        <text x="${x + w/2}" y="${y + h/2 + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${Utils.escape(z.name.slice(0, 15))}</text>
+      </g>
+    `;
+  },
+
+  openAddZone() {
+    const colors = ["#4a8528","#e8a33d","#1976d2","#c62828","#7b1fa2","#8b5a2b","#5fa832"];
+    const types = ["Огород","Сад","Дом","Баня","Сарай","Пасека","Курятник","Теплица","Гараж","Двор","Другое"];
+    Modal.open("Новая зона на карте", `
+      <div class="field"><label>Название</label><input id="pz-name" placeholder="Огород / Дом / Пасека"></div>
+      <div class="field"><label>Тип</label>
+        <select id="pz-type">${types.map(t => `<option>${t}</option>`).join("")}</select>
+      </div>
+      <div class="field"><label>Цвет</label>
+        <div class="row wrap" id="pz-colors">
+          ${colors.map((c, i) => `<span data-color="${c}" style="display:inline-block;width:32px;height:32px;background:${c};border-radius:6px;cursor:pointer;${i===0?"outline:3px solid var(--green-700)":""}"></span>`).join("")}
+        </div>
+      </div>
+      <div class="row">
+        <div class="field grow"><label>X (м)</label><input type="number" id="pz-x" value="0" min="0"></div>
+        <div class="field grow"><label>Y (м)</label><input type="number" id="pz-y" value="0" min="0"></div>
+      </div>
+      <div class="row">
+        <div class="field grow"><label>Ширина (м)</label><input type="number" id="pz-w" value="5" min="1"></div>
+        <div class="field grow"><label>Высота (м)</label><input type="number" id="pz-h" value="5" min="1"></div>
+      </div>
+      <div class="field"><label>Заметка</label><textarea id="pz-note" placeholder="Что тут растёт / что планируешь"></textarea></div>
+      <button class="btn btn-primary btn-block" id="pz-save">Добавить</button>
+    `, (body) => {
+      let selectedColor = colors[0];
+      body.querySelectorAll("[data-color]").forEach(el => {
+        el.addEventListener("click", () => {
+          body.querySelectorAll("[data-color]").forEach(x => x.style.outline = "");
+          el.style.outline = "3px solid var(--green-700)";
+          selectedColor = el.dataset.color;
+        });
+      });
+      document.getElementById("pz-save").addEventListener("click", () => {
+        const name = document.getElementById("pz-name").value.trim();
+        if (!name) { Toast.show("Введи название", "danger"); return; }
+        const zones = Store.get("plot_zones", []);
+        zones.push({
+          id: Utils.uid(), name,
+          type: document.getElementById("pz-type").value,
+          color: selectedColor,
+          x: +document.getElementById("pz-x").value || 0,
+          y: +document.getElementById("pz-y").value || 0,
+          w: +document.getElementById("pz-w").value || 5,
+          h: +document.getElementById("pz-h").value || 5,
+          note: document.getElementById("pz-note").value.trim()
+        });
+        Store.set("plot_zones", zones);
+        Modal.close();
+        Toast.show("Зона добавлена", "success");
+        Router.go("map");
+        setTimeout(() => this.render("map-content") && this.switchTab("plot"), 200);
+      });
+    });
+  },
+
+  openEditZone(z) {
+    Modal.open("Зона: " + z.name, `
+      <div class="field"><label>Название</label><input id="ez-name" value="${Utils.escape(z.name)}"></div>
+      <div class="field"><label>Заметка</label><textarea id="ez-note">${Utils.escape(z.note || "")}</textarea></div>
+      <div class="row">
+        <button class="btn btn-primary grow" id="ez-save">Сохранить</button>
+        <button class="btn btn-danger grow" id="ez-del">Удалить</button>
+      </div>
+    `, () => {
+      document.getElementById("ez-save").addEventListener("click", () => {
+        const zones = Store.get("plot_zones", []);
+        const i = zones.findIndex(x => x.id === z.id);
+        if (i >= 0) {
+          zones[i].name = document.getElementById("ez-name").value.trim();
+          zones[i].note = document.getElementById("ez-note").value.trim();
+          Store.set("plot_zones", zones);
+          Modal.close();
+          Toast.show("Обновлено", "success");
+          this.render("map-content");
+        }
+      });
+      document.getElementById("ez-del").addEventListener("click", () => {
+        if (!confirm("Удалить зону?")) return;
+        Store.set("plot_zones", Store.get("plot_zones", []).filter(x => x.id !== z.id));
+        Modal.close();
+        this.render("map-content");
+      });
+    });
+  },
+
+  openSizeDialog() {
+    Modal.open("Размер участка", `
+      <div class="row">
+        <div class="field grow"><label>Ширина (м)</label><input type="number" id="plot-w" value="${this.plotW}" min="5" max="200"></div>
+        <div class="field grow"><label>Длина (м)</label><input type="number" id="plot-h" value="${this.plotH}" min="5" max="200"></div>
+      </div>
+      <button class="btn btn-primary btn-block" id="plot-save">Применить</button>
+    `, () => {
+      document.getElementById("plot-save").addEventListener("click", () => {
+        this.plotW = +document.getElementById("plot-w").value || 30;
+        this.plotH = +document.getElementById("plot-h").value || 40;
+        Store.set("plot_size", { w: this.plotW, h: this.plotH });
+        Modal.close();
+        Toast.show("Размер обновлён", "success");
+        this.render("map-content");
+      });
+    });
+  },
+
+  init() {
+    const size = Store.get("plot_size", null);
+    if (size) {
+      this.plotW = size.w || 30;
+      this.plotH = size.h || 40;
+    }
+  }
+};
+
+window.PlotMap = PlotMap;
+
+/* =========================================================
+   2. QR-КОДЫ (генератор на canvas, без библиотек)
+   ========================================================= */
+const QR = {
+  // Простой QR-генератор (упрощённый, для коротких данных)
+  // Используем сервис-заглушку через data URL, если нет встроенного
+  generate(text, size = 200) {
+    // Пробуем через api.qrserver.com — но это требует интернет
+    // Для офлайна используем упрощённый алгоритм
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    
+    // Fallback: если есть библиотека — используем её
+    if (window.QRCode) {
+      // ...
+    }
+    
+    // Простой вариант: рисуем SVG с QR от Google Chart API (устарел)
+    // Лучше: показываем код как текст + ссылку для сканирования
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#000";
+    ctx.font = "14px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("QR недоступен офлайн", size/2, size/2 - 10);
+    ctx.font = "11px sans-serif";
+    ctx.fillStyle = "#666";
+    ctx.fillText("Открой с интернетом", size/2, size/2 + 10);
+    
+    return canvas.toDataURL();
+  },
+
+  // Онлайн-генерация (при наличии интернета)
+  url(text, size = 300) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
+  },
+
+  // Открыть модалку с QR для объекта
+  show(type, id, data) {
+    const text = `DVOR:${type}:${id}:${JSON.stringify(data).slice(0, 500)}`;
+    Modal.open("📱 QR-код объекта", `
+      <div class="text-center">
+        <p class="text-sm text-muted">Наведи камеру телефона или другого устройства</p>
+        <img src="${this.url(text, 300)}" style="width:100%;max-width:300px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+        <div style="display:none;padding:20px;background:var(--earth-100);border-radius:8px;margin:12px auto;max-width:300px">
+          <div class="text-sm">QR недоступен без интернета</div>
+        </div>
+        <div style="background:var(--earth-100);padding:12px;border-radius:8px;font-family:monospace;font-size:11px;word-break:break-all;margin:12px 0">
+          ${Utils.escape(text)}
+        </div>
+        <div class="row wrap">
+          <button class="btn btn-primary btn-sm grow" onclick="Print.qrData('${type}', '${id}')">🖨 Распечатать</button>
+          <button class="btn btn-secondary btn-sm grow" id="qr-copy">📋 Скопировать</button>
+        </div>
+      </div>
+    `, () => {
+      const copyBtn = document.getElementById("qr-copy");
+      if (copyBtn) copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(text).then(() => Toast.show("Скопировано", "success"));
+      });
+    });
+  }
+};
+
+window.QR = QR;
+
+// Кнопка печати QR
+Print.qrData = function(type, id) {
+  const text = `DVOR:${type}:${id}`;
+  const w = window.open("", "_blank");
+  w.document.write(`
+    <html><head><title>QR</title><style>body{text-align:center;font-family:sans-serif;padding:40px}</style></head>
+    <body>
+      <h2>${Utils.escape(type)}</h2>
+      <img src="${QR.url(text, 400)}" style="max-width:400px">
+      <p>${Utils.escape(text)}</p>
+      <script>setTimeout(()=>window.print(),800)<\/script>
+    </body></html>
+  `);
+  w.document.close();
+};
+
+/* =========================================================
+   3. ВИЗУАЛЬНЫЕ СХЕМЫ (SVG)
+   ========================================================= */
+const Schemes = {
+  // Щиток электрический
+  electricPanel() {
+    return `
+      <svg viewBox="0 0 400 260" style="width:100%;max-width:400px;display:block;margin:0 auto;background:#fff;border-radius:8px">
+        <rect x="20" y="20" width="360" height="220" fill="#f5ede0" stroke="#5c3a21" stroke-width="2" rx="4"/>
+        <text x="200" y="15" text-anchor="middle" font-size="11" fill="#5c3a21" font-weight="700">ЩИТОК</text>
+        <!-- Вводной автомат -->
+        <rect x="40" y="40" width="60" height="30" fill="#c62828" rx="3"/>
+        <text x="70" y="60" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">Ввод</text>
+        <!-- Счётчик -->
+        <rect x="120" y="40" width="60" height="30" fill="#1976d2" rx="3"/>
+        <text x="150" y="60" text-anchor="middle" font-size="10" fill="#fff">Счётчик</text>
+        <!-- Реле напряжения -->
+        <rect x="200" y="40" width="60" height="30" fill="#f57c00" rx="3"/>
+        <text x="230" y="60" text-anchor="middle" font-size="9" fill="#fff">Реле U</text>
+        <!-- УЗО общее -->
+        <rect x="280" y="40" width="80" height="30" fill="#7b1fa2" rx="3"/>
+        <text x="320" y="60" text-anchor="middle" font-size="10" fill="#fff">УЗО 100мА</text>
+        <!-- Линии вниз -->
+        <line x1="70" y1="70" x2="70" y2="90" stroke="#5c3a21" stroke-width="1.5"/>
+        <line x1="150" y1="70" x2="150" y2="90" stroke="#5c3a21" stroke-width="1.5"/>
+        <line x1="230" y1="70" x2="230" y2="90" stroke="#5c3a21" stroke-width="1.5"/>
+        <line x1="320" y1="70" x2="320" y2="90" stroke="#5c3a21" stroke-width="1.5"/>
+        <line x1="70" y1="90" x2="320" y2="90" stroke="#5c3a21" stroke-width="1.5"/>
+        <!-- Групповые УЗО + автоматы -->
+        ${[100, 160, 220, 280, 340].map((x, i) => `
+          <rect x="${x - 25}" y="110" width="50" height="25" fill="#1976d2" rx="2"/>
+          <text x="${x}" y="126" text-anchor="middle" font-size="8" fill="#fff">АВ${i + 1}</text>
+          <rect x="${x - 25}" y="145" width="50" height="25" fill="#7b1fa2" rx="2"/>
+          <text x="${x}" y="161" text-anchor="middle" font-size="8" fill="#fff">УЗО 30</text>
+          <line x1="${x}" y1="90" x2="${x}" y2="110" stroke="#5c3a21" stroke-width="1"/>
+          <line x1="${x}" y1="170" x2="${x}" y2="200" stroke="#5c3a21" stroke-width="1"/>
+          <text x="${x}" y="215" text-anchor="middle" font-size="8" fill="#5c3a21">${["Свет","Розетки","Кухня","Баня","Улица"][i]}</text>
+        `).join("")}
+        <!-- Нулевая и заземление -->
+        <line x1="40" y1="235" x2="380" y2="235" stroke="#5c3a21" stroke-width="2"/>
+        <text x="60" y="250" font-size="9" fill="#5c3a21">N (ноль)</text>
+        <line x1="40" y1="245" x2="380" y2="245" stroke="#f57c00" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="300" y="255" font-size="9" fill="#f57c00">PE (земля)</text>
+      </svg>
+    `;
+  },
+
+  // Разводка воды
+  waterScheme() {
+    return `
+      <svg viewBox="0 0 400 260" style="width:100%;max-width:400px;display:block;margin:0 auto;background:#fff;border-radius:8px">
+        <rect x="20" y="20" width="360" height="220" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="4"/>
+        <text x="200" y="15" text-anchor="middle" font-size="11" fill="#1976d2" font-weight="700">ВОДОСНАБЖЕНИЕ</text>
+        <!-- Скважина -->
+        <rect x="40" y="40" width="40" height="80" fill="#8b5a2b" rx="3"/>
+        <text x="60" y="135" text-anchor="middle" font-size="9" fill="#5c3a21">Скважина</text>
+        <!-- Насос -->
+        <circle cx="60" cy="150" r="12" fill="#1976d2"/>
+        <text x="60" y="154" text-anchor="middle" font-size="9" fill="#fff">Н</text>
+        <line x1="60" y1="120" x2="60" y2="138" stroke="#1976d2" stroke-width="2"/>
+        <!-- Гидроаккумулятор -->
+        <ellipse cx="130" cy="150" rx="20" ry="25" fill="#1976d2"/>
+        <text x="130" y="154" text-anchor="middle" font-size="10" fill="#fff">ГА</text>
+        <text x="130" y="185" text-anchor="middle" font-size="9" fill="#5c3a21">Гидроакк.</text>
+        <line x1="72" y1="150" x2="110" y2="150" stroke="#1976d2" stroke-width="2"/>
+        <!-- Фильтры -->
+        <rect x="180" y="130" width="30" height="40" fill="#4a8528" rx="3"/>
+        <text x="195" y="155" text-anchor="middle" font-size="9" fill="#fff">Ф</text>
+        <line x1="150" y1="150" x2="180" y2="150" stroke="#1976d2" stroke-width="2"/>
+        <!-- Коллектор -->
+        <line x1="210" y1="150" x2="250" y2="150" stroke="#1976d2" stroke-width="2"/>
+        <line x1="250" y1="60" x2="250" y2="220" stroke="#1976d2" stroke-width="3"/>
+        <text x="250" y="55" text-anchor="middle" font-size="9" fill="#1976d2">Коллектор</text>
+        <!-- Точки -->
+        ${["Кухня","Ванная","Туалет","Улица","Баня"].map((n, i) => {
+          const y = 80 + i * 30;
+          return `
+            <line x1="250" y1="${y}" x2="310" y2="${y}" stroke="#1976d2" stroke-width="1.5"/>
+            <circle cx="315" cy="${y}" r="5" fill="#4a8528"/>
+            <text x="325" y="${y + 3}" font-size="9" fill="#5c3a21">${n}</text>
+          `;
+        }).join("")}
+      </svg>
+    `;
+  },
+
+  // Улей Дадан в разрезе
+  hiveCut() {
+    return `
+      <svg viewBox="0 0 260 340" style="width:100%;max-width:260px;display:block;margin:0 auto;background:#fff;border-radius:8px">
+        <rect x="20" y="20" width="220" height="300" fill="#fff3d6" stroke="#8b5a2b" stroke-width="2" rx="4"/>
+        <text x="130" y="15" text-anchor="middle" font-size="11" fill="#8b5a2b" font-weight="700">УЛЕЙ ДАДАН</text>
+        <!-- Крышка -->
+        <rect x="25" y="25" width="210" height="20" fill="#8b5a2b" rx="2"/>
+        <text x="130" y="39" text-anchor="middle" font-size="10" fill="#fff">Крышка</text>
+        <!-- Подкрышник -->
+        <rect x="25" y="50" width="210" height="15" fill="#c9a97a" rx="2"/>
+        <text x="130" y="61" text-anchor="middle" font-size="9" fill="#5c3a21">Подкрышник</text>
+        <!-- Магазин -->
+        <rect x="25" y="70" width="210" height="70" fill="#e8a33d" rx="2"/>
+        <text x="130" y="100" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">Магазин</text>
+        <text x="130" y="120" text-anchor="middle" font-size="9" fill="#fff">12 рамок 435×145</text>
+        <!-- Разделительная решётка -->
+        <line x1="25" y1="142" x2="235" y2="142" stroke="#c62828" stroke-width="2" stroke-dasharray="5 3"/>
+        <text x="130" y="153" text-anchor="middle" font-size="9" fill="#c62828">РР</text>
+        <!-- Корпус 1 -->
+        <rect x="25" y="160" width="210" height="60" fill="#e8a33d" rx="2" opacity="0.9"/>
+        <text x="130" y="185" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">Корпус 1</text>
+        <text x="130" y="205" text-anchor="middle" font-size="9" fill="#fff">12 рамок 435×300</text>
+        <!-- Корпус 2 -->
+        <rect x="25" y="222" width="210" height="60" fill="#e8a33d" rx="2" opacity="0.9"/>
+        <text x="130" y="247" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">Корпус 2</text>
+        <!-- Дно -->
+        <rect x="25" y="285" width="210" height="20" fill="#5c3a21" rx="2"/>
+        <text x="130" y="299" text-anchor="middle" font-size="9" fill="#fff">Дно</text>
+        <text x="130" y="320" text-anchor="middle" font-size="9" fill="#5c3a21">Леток ↓</text>
+      </svg>
+    `;
+  },
+
+  // Стропильная система
+  roofScheme() {
+    return `
+      <svg viewBox="0 0 400 220" style="width:100%;max-width:400px;display:block;margin:0 auto;background:#fff;border-radius:8px">
+        <rect x="20" y="20" width="360" height="180" fill="#f5ede0" stroke="#8b5a2b" stroke-width="2" rx="4"/>
+        <text x="200" y="15" text-anchor="middle" font-size="11" fill="#8b5a2b" font-weight="700">СТРОПИЛЬНАЯ СИСТЕМА</text>
+        <!-- Основание -->
+        <line x1="40" y1="180" x2="360" y2="180" stroke="#5c3a21" stroke-width="3"/>
+        <text x="50" y="195" font-size="9" fill="#5c3a21">Мауэрлат</text>
+        <!-- Стропила -->
+        <line x1="60" y1="180" x2="200" y2="50" stroke="#c62828" stroke-width="2.5"/>
+        <line x1="340" y1="180" x2="200" y2="50" stroke="#c62828" stroke-width="2.5"/>
+        <text x="110" y="120" font-size="9" fill="#c62828">Стропило</text>
+        <!-- Конёк -->
+        <circle cx="200" cy="50" r="5" fill="#8b5a2b"/>
+        <text x="200" y="42" text-anchor="middle" font-size="9" fill="#5c3a21">Конёк</text>
+        <!-- Стойки -->
+        <line x1="130" y1="115" x2="130" y2="180" stroke="#1976d2" stroke-width="2"/>
+        <line x1="270" y1="115" x2="270" y2="180" stroke="#1976d2" stroke-width="2"/>
+        <text x="135" y="150" font-size="8" fill="#1976d2">Стойка</text>
+        <!-- Ригель -->
+        <line x1="130" y1="115" x2="270" y2="115" stroke="#7b1fa2" stroke-width="2"/>
+        <text x="200" y="110" text-anchor="middle" font-size="8" fill="#7b1fa2">Ригель</text>
+        <!-- Подкосы -->
+        <line x1="130" y1="115" x2="80" y2="180" stroke="#4a8528" stroke-width="2"/>
+        <line x1="270" y1="115" x2="320" y2="180" stroke="#4a8528" stroke-width="2"/>
+        <text x="60" y="160" font-size="8" fill="#4a8528">Подкос</text>
+        <!-- Обрешётка -->
+        ${[80, 100, 120].map((y, i) => {
+          const x = 200 - (200 - 60) * (y - 50) / 130;
+          const x2 = 200 + (340 - 200) * (y - 50) / 130;
+          return `<line x1="${x}" y1="${y + 50}" x2="${x2}" y2="${y + 50}" stroke="#c9a97a" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+        }).join("")}
+        <text x="330" y="170" font-size="9" fill="#c9a97a">Обрешётка</text>
+      </svg>
+    `;
+  },
+
+  // Печь кирпичная (порядовка)
+  stoveScheme() {
+    return `
+      <svg viewBox="0 0 300 300" style="width:100%;max-width:300px;display:block;margin:0 auto;background:#fff;border-radius:8px">
+        <rect x="20" y="20" width="260" height="260" fill="#f5ede0" stroke="#8b5a2b" stroke-width="2" rx="4"/>
+        <text x="150" y="15" text-anchor="middle" font-size="11" fill="#8b5a2b" font-weight="700">ПЕЧЬ (схема)</text>
+        <!-- Основание -->
+        <rect x="60" y="240" width="180" height="30" fill="#5c3a21"/>
+        <text x="150" y="260" text-anchor="middle" font-size="10" fill="#fff">Фундамент</text>
+        <!-- Тело печи -->
+        <rect x="70" y="80" width="160" height="160" fill="#c9a97a" stroke="#8b5a2b" stroke-width="2"/>
+        <!-- Топка -->
+        <rect x="100" y="180" width="100" height="40" fill="#2b1810" stroke="#8b5a2b" stroke-width="2"/>
+        <text x="150" y="205" text-anchor="middle" font-size="10" fill="#fff">Топка</text>
+        <!-- Поддувало -->
+        <rect x="120" y="225" width="60" height="15" fill="#2b1810"/>
+        <text x="150" y="236" text-anchor="middle" font-size="8" fill="#fff">Поддувало</text>
+        <!-- Дымоход -->
+        <rect x="135" y="20" width="30" height="60" fill="#5c3a21"/>
+        <text x="150" y="15" text-anchor="middle" font-size="9" fill="#5c3a21">Дымоход</text>
+        <!-- Задвижка -->
+        <line x1="130" y1="50" x2="170" y2="50" stroke="#c62828" stroke-width="3"/>
+        <text x="180" y="53" font-size="9" fill="#c62828">Задвижка</text>
+        <!-- Варочная поверхность -->
+        <rect x="85" y="100" width="130" height="10" fill="#2b1810"/>
+        <text x="150" y="108" text-anchor="middle" font-size="8" fill="#fff">Варочная</text>
+        <!-- Камера -->
+        <rect x="85" y="120" width="130" height="50" fill="#e8dcc0" stroke="#8b5a2b" stroke-width="1"/>
+        <text x="150" y="148" text-anchor="middle" font-size="9" fill="#5c3a21">Духовка</text>
+      </svg>
+    `;
+  }
+};
+
+window.Schemes = Schemes;
+
+/* =========================================================
+   4. КАЛЕНДАРЬ-СЕТКА (месяц)
+   ========================================================= */
+const CalendarGrid = {
+  currentDate: new Date(),
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const y = this.currentDate.getFullYear();
+    const m = this.currentDate.getMonth();
+    const firstDay = new Date(y, m, 1);
+    const lastDay = new Date(y, m + 1, 0);
+    const startWeekday = (firstDay.getDay() + 6) % 7; // понедельник = 0
+
+    // Собираем события
+    const events = this.collectEvents(y, m);
+
+    // Строим сетку
+    let cells = "";
+    // Пустые клетки до начала
+    for (let i = 0; i < startWeekday; i++) {
+      cells += `<div style="padding:6px;background:transparent"></div>`;
+    }
+    // Дни
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const iso = new Date(y, m, d).toISOString().slice(0, 10);
+      const dayEvents = events[iso] || [];
+      const isToday = iso === Utils.todayISO();
+      const hasEvents = dayEvents.length > 0;
+      const hasCritical = dayEvents.some(e => e.level === "critical");
+      
+      cells += `
+        <div class="cal-cell" data-date="${iso}" style="
+          padding:4px;min-height:52px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);cursor:pointer;
+          ${isToday ? "outline:2px solid var(--green-700);outline-offset:-2px" : ""}
+          ${hasCritical ? "background:var(--danger);color:#fff" : hasEvents ? "background:var(--honey-light)" : ""}
+        ">
+          <div style="font-weight:700;font-size:12px">${d}</div>
+          ${dayEvents.slice(0, 2).map(e => `
+            <div style="font-size:9px;line-height:1.1;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${e.icon || "•"} ${Utils.escape(e.title.slice(0, 10))}</div>
+          `).join("")}
+          ${dayEvents.length > 2 ? `<div style="font-size:9px;color:var(--text-muted)">+${dayEvents.length - 2}</div>` : ""}
+        </div>
+      `;
+    }
+
+    const weekdays = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+    wrap.innerHTML = `
+      <div class="card">
+        <div class="row between mb-12">
+          <button class="btn btn-secondary btn-sm" id="cal-prev">←</button>
+          <b>${Utils.monthName(m)} ${y}</b>
+          <button class="btn btn-secondary btn-sm" id="cal-next">→</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+          ${weekdays.map(w => `<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:4px 0">${w}</div>`).join("")}
+          ${cells}
+        </div>
+        <div class="row wrap mt-8 text-xs text-muted">
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--honey-light);border-radius:2px"></span> есть события</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:2px"></span> важные</span>
+        </div>
+      </div>
+      <div id="cal-day-detail"></div>
+    `;
+
+    // Навигация
+    document.getElementById("cal-prev").onclick = () => {
+      this.currentDate.setMonth(m - 1);
+      this.render(containerId);
+    };
+    document.getElementById("cal-next").onclick = () => {
+      this.currentDate.setMonth(m + 1);
+      this.render(containerId);
+    };
+
+    // Клик по дню
+    wrap.querySelectorAll(".cal-cell").forEach(cell => {
+      cell.addEventListener("click", () => {
+        const date = cell.dataset.date;
+        this.showDay(date, events[date] || []);
+      });
+    });
+  },
+
+  collectEvents(y, m) {
+    const events = {};
+    const push = (iso, e) => {
+      if (!events[iso]) events[iso] = [];
+      events[iso].push(e);
+    };
+
+    // Дедлайны авто и кастомные
+    if (window.Deadlines) {
+      Deadlines.getAll().forEach(d => {
+        const dd = new Date(d.date);
+        if (dd.getFullYear() === y && dd.getMonth() === m) {
+          push(d.date, { icon: d.icon, title: d.title, type: "deadline", level: "info" });
+        }
+      });
+    }
+
+    // Задачи
+    Store.get("family_tasks", []).forEach(t => {
+      if (!t.date) return;
+      const dd = new Date(t.date);
+      if (dd.getFullYear() === y && dd.getMonth() === m && !t.done) {
+        const level = t.date < Utils.todayISO() ? "critical" : "info";
+        push(t.date, { icon: "✅", title: t.title, type: "task", level });
+      }
+    });
+
+    // Посадки
+    Store.get("garden_plantings", []).forEach(p => {
+      const dd = new Date(p.date);
+      if (dd.getFullYear() === y && dd.getMonth() === m) {
+        push(p.date, { icon: "🌿", title: p.culture, type: "planting", level: "info" });
+      }
+    });
+
+    // Ветеринарка (следующие даты)
+    Store.get("livestock_vet", []).forEach(v => {
+      if (!v.next) return;
+      const dd = new Date(v.next);
+      if (dd.getFullYear() === y && dd.getMonth() === m) {
+        push(v.next, { icon: "💉", title: v.what, type: "vet", level: "important" });
+      }
+    });
+
+    // Обработки пасеки
+    Store.get("bee_treatments", []).forEach(t => {
+      const dd = new Date(t.date);
+      if (dd.getFullYear() === y && dd.getMonth() === m) {
+        push(t.date, { icon: "💊", title: "Обработка: " + t.agent, type: "bee", level: "info" });
+      }
+    });
+
+    return events;
+  },
+
+  showDay(date, events) {
+    const el = document.getElementById("cal-day-detail");
+    if (!el) return;
+    if (!events.length) {
+      el.innerHTML = `<div class="card"><div class="text-muted text-sm">${Utils.fmtDate(date)} — ничего не запланировано</div></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">${Utils.fmtDate(date)}</div>
+        <div class="list">
+          ${events.map(e => `
+            <div class="list-item">
+              <span class="li-icon">${e.icon}</span>
+              <div class="li-body"><div class="li-title">${Utils.escape(e.title)}</div>
+              <div class="li-sub">${e.type}</div></div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+};
+
+window.CalendarGrid = CalendarGrid;
+
+/* =========================================================
+   5. ДОБАВЛЯЕМ ВКЛАДКУ «КАРТА» — ПЕРЕОПРЕДЕЛЯЕМ MapScreen
+   ========================================================= */
+if (window.MapScreen) {
+  const origMapRender = MapScreen.render.bind(MapScreen);
+  MapScreen.render = function() {
+    const c = document.getElementById("map-content");
+    if (!c) return;
+    // Проверяем — есть ли вкладка plot
+    const tabsWrap = document.getElementById("map-tabs");
+    if (tabsWrap && !tabsWrap.dataset.extended) {
+      tabsWrap.dataset.extended = "1";
+      tabsWrap.insertAdjacentHTML("afterbegin", `
+        <span class="chip active" data-tab="plot">📐 Участок</span>
+        <span class="chip" data-tab="schemes">🔌 Схемы</span>
+      `);
+      // Снимаем active с других
+      tabsWrap.querySelectorAll(".chip").forEach(ch => {
+        if (ch.dataset.tab !== "plot") ch.classList.remove("active");
+      });
+    }
+    
+    // Обработчик вкладки
+    if (!tabsWrap.dataset.bound2) {
+      tabsWrap.dataset.bound2 = "1";
+      tabsWrap.addEventListener("click", (e) => {
+        const chip = e.target.closest(".chip");
+        if (!chip) return;
+        const tab = chip.dataset.tab;
+        if (tab === "plot" || tab === "schemes") {
+          tabsWrap.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+          chip.classList.add("active");
+          if (tab === "plot") {
+            PlotMap.init();
+            PlotMap.render("map-content");
+          } else if (tab === "schemes") {
+            this.renderSchemes(c);
+          }
+        }
+      });
+    }
+
+    // Если активная вкладка — plot, показываем карту
+    const activeChip = tabsWrap?.querySelector(".chip.active");
+    if (activeChip?.dataset.tab === "plot") {
+      PlotMap.init();
+      PlotMap.render("map-content");
+    } else if (activeChip?.dataset.tab === "schemes") {
+      this.renderSchemes(c);
+    } else {
+      origMapRender();
+    }
+  };
+
+  MapScreen.renderSchemes = function(c) {
+    c.innerHTML = `
+      <div class="card info">
+        <div class="card-title">🔌 Визуальные схемы</div>
+        <p class="text-sm">Наглядные схемы для щитка, воды, крыши, печи, улья.</p>
+      </div>
+      <div class="chips" id="scheme-chips">
+        <span class="chip active" data-scheme="panel">Щиток</span>
+        <span class="chip" data-scheme="water">Вода</span>
+        <span class="chip" data-scheme="hive">Улей</span>
+        <span class="chip" data-scheme="roof">Крыша</span>
+        <span class="chip" data-scheme="stove">Печь</span>
+      </div>
+      <div id="scheme-body"></div>
+    `;
+    const renderScheme = (key) => {
+      const body = document.getElementById("scheme-body");
+      const html = {
+        panel: Schemes.electricPanel(),
+        water: Schemes.waterScheme(),
+        hive: Schemes.hiveCut(),
+        roof: Schemes.roofScheme(),
+        stove: Schemes.stoveScheme()
+      }[key];
+      body.innerHTML = `<div class="card">${html}</div>
+        <button class="btn btn-secondary btn-block mt-12" onclick="window.print()">🖨 Распечатать схему</button>`;
+    };
+    renderScheme("panel");
+    document.querySelectorAll("#scheme-chips .chip").forEach(ch => {
+      ch.addEventListener("click", () => {
+        document.querySelectorAll("#scheme-chips .chip").forEach(x => x.classList.remove("active"));
+        ch.classList.add("active");
+        renderScheme(ch.dataset.scheme);
+      });
+    });
+  };
+}
+
+/* =========================================================
+   6. ДОБАВЛЯЕМ QR-КНОПКИ В КАРТОЧКИ
+   ========================================================= */
+// Перехватываем отрисовку ульев, грядок, банок для добавления QR
+function addQRButtons() {
+  // Для ульев
+  document.querySelectorAll('[data-screen="bees"] [data-le-id], #bee-hives-wrap [data-le-id]').forEach(el => {
+    if (el.dataset.qrAdded) return;
+    el.dataset.qrAdded = "1";
+    const actions = el.querySelector(".li-actions");
+    if (actions) {
+      const qrBtn = document.createElement("button");
+      qrBtn.className = "li-btn";
+      qrBtn.textContent = "📱";
+      qrBtn.title = "QR-код";
+      qrBtn.onclick = (e) => {
+        e.stopPropagation();
+        const id = el.dataset.leId;
+        const hive = Store.get("bee_hives", []).find(x => x.id === id);
+        if (hive) QR.show("Улей", id, hive);
+      };
+      actions.insertBefore(qrBtn, actions.firstChild);
+    }
+  });
+
+  // Для грядок
+  document.querySelectorAll('#garden-beds-wrap [data-le-id]').forEach(el => {
+    if (el.dataset.qrAdded) return;
+    el.dataset.qrAdded = "1";
+    const actions = el.querySelector(".li-actions");
+    if (actions) {
+      const qrBtn = document.createElement("button");
+      qrBtn.className = "li-btn";
+      qrBtn.textContent = "📱";
+      qrBtn.title = "QR-код";
+      qrBtn.onclick = (e) => {
+        e.stopPropagation();
+        const id = el.dataset.leId;
+        const bed = Store.get("garden_beds", []).find(x => x.id === id);
+        if (bed) QR.show("Грядка", id, bed);
+      };
+      actions.insertBefore(qrBtn, actions.firstChild);
+    }
+  });
+
+  // Для банок в погребе
+  document.querySelectorAll('#cellar-stock-wrap [data-le-id]').forEach(el => {
+    if (el.dataset.qrAdded) return;
+    el.dataset.qrAdded = "1";
+    const actions = el.querySelector(".li-actions");
+    if (actions) {
+      const qrBtn = document.createElement("button");
+      qrBtn.className = "li-btn";
+      qrBtn.textContent = "📱";
+      qrBtn.title = "QR-код";
+      qrBtn.onclick = (e) => {
+        e.stopPropagation();
+        const id = el.dataset.leId;
+        const item = Store.get("cellar_stock", []).find(x => x.id === id);
+        if (item) QR.show("Погреб", id, item);
+      };
+      actions.insertBefore(qrBtn, actions.firstChild);
+    }
+  });
+}
+
+// Навешиваем QR-кнопки после рендера разделов
+["bees","garden","cellar"].forEach(screen => {
+  const orig = window.ScreenHooks[screen];
+  window.ScreenHooks[screen] = function() {
+    if (orig) orig();
+    setTimeout(addQRButtons, 400);
+  };
+});
+
+/* =========================================================
+   7. ДОБАВЛЯЕМ КАЛЕНДАРЬ-СЕТКУ В РАЗДЕЛ КАЛЕНДАРЯ
+   ========================================================= */
+if (window.CalendarScreen) {
+  const origCalendarRender = CalendarScreen.render.bind(CalendarScreen);
+  CalendarScreen.render = function() {
+    origCalendarRender();
+    // Добавляем вкладку «Сетка» если ещё нет
+    const tabsWrap = document.getElementById("cal-tabs");
+    if (tabsWrap && !tabsWrap.dataset.gridAdded) {
+      tabsWrap.dataset.gridAdded = "1";
+      tabsWrap.insertAdjacentHTML("afterbegin", `<span class="chip" data-season="grid">📅 Сетка</span>`);
+      tabsWrap.addEventListener("click", (e) => {
+        const chip = e.target.closest(".chip");
+        if (chip?.dataset.season === "grid") {
+          tabsWrap.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+          chip.classList.add("active");
+          CalendarGrid.render("calendar-content");
+        }
+      });
+    }
+  };
+}
+
+/* =========================================================
+   8. КОМАНДЫ В КОНСОЛЬ
+   ========================================================= */
+window.DVOR = window.DVOR || {};
+window.DVOR.qr = (type, id, data) => QR.show(type, id, data);
+window.DVOR.schemes = Schemes;
+window.DVOR.plotMap = PlotMap;
+window.DVOR.calendar = CalendarGrid;
+
+console.log("📐 Блок 2 загружен: Карта участка + QR + Схемы + Календарь-сетка");
+</script>
+<!-- ============================================= -->
+<!-- РАСШИРЕНИЕ БЛОК 3: АГРОНОМ + ВЕТ-АПТЕЧКА + ОПРЕДЕЛИТЕЛЬ + МЕДОВАЯ КАРТА -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* =========================================================
+   1. АГРОНОМ — планы по культурам с авто-задачами
+   ========================================================= */
+const Agronom = {
+  // База знаний по культурам
+  cultures: {
+    tomato: {
+      name: "Томаты",
+      icon: "🍅",
+      daysToHarvest: 100,
+      steps: [
+        { day: 0,  action: "Посев семян на рассаду", note: "Глубина 1 см, t +22°C, всходы через 5–7 дней" },
+        { day: 7,  action: "Первая подкормка рассады", note: "Слабым раствором комплексного удобрения" },
+        { day: 14, action: "Пикировка в отдельные горшки", note: "По семядольные листья" },
+        { day: 21, action: "Вторая подкормка рассады", note: "С преобладанием фосфора и калия" },
+        { day: 45, action: "Высадка в теплицу", note: "Если t почвы +15°C и нет заморозков" },
+        { day: 55, action: "Подвязка и формирование", note: "В один стебель, удалять пасынки" },
+        { day: 60, action: "Первая подкормка в грунте", note: "Куриный помёт 1:20 или «Агрикола»" },
+        { day: 70, action: "Обработка от фитофторы", note: "Фитоспорин, 1% бордоская" },
+        { day: 75, action: "Подкормка с калием", note: "Зола, монокалийфосфат" },
+        { day: 80, action: "Повторная обработка от фитофторы", note: "Через 10–14 дней" },
+        { day: 90, action: "Сбор первых плодов", note: "Бурые — на дозревание, красные — сразу" },
+        { day: 100, action: "Массовый сбор", note: "Каждые 2–3 дня" }
+      ]
+    },
+    cucumber: {
+      name: "Огурцы",
+      icon: "🥒",
+      daysToHarvest: 50,
+      steps: [
+        { day: 0,  action: "Посев семян", note: "Прямо в грунт при t +15°C или в рассаду" },
+        { day: 5,  action: "Первая подкормка", note: "Азот — рост" },
+        { day: 15, action: "Подвязка на шпалеру", note: "Вертикальный рост для экономии места" },
+        { day: 20, action: "Подкормка калием", note: "Зола, калимагнезия" },
+        { day: 25, action: "Начало цветения", note: "Полив утром, не по листу" },
+        { day: 30, action: "Первая обработка от тли", note: "Луковый настой или мыло" },
+        { day: 40, action: "Первые плоды", note: "Собирать каждые 2 дня, не давать перерастать" },
+        { day: 50, action: "Массовый сбор", note: "Каждый день–два" }
+      ]
+    },
+    potato: {
+      name: "Картофель",
+      icon: "🥔",
+      daysToHarvest: 90,
+      steps: [
+        { day: -21, action: "Яровизация клубней", note: "На свету, t +12…+15°C, 3 недели" },
+        { day: 0,  action: "Посадка в грунт", note: "t почвы +8…+10°C, глубина 8–10 см" },
+        { day: 10, action: "Первое боронование", note: "По всходам, для рыхления" },
+        { day: 21, action: "Первое окучивание", note: "Слой земли 10 см" },
+        { day: 30, action: "Первая обработка от колорадского жука", note: "«Престиж» или сбор вручную" },
+        { day: 35, action: "Подкормка", note: "Азофоска или зола" },
+        { day: 42, action: "Второе окучивание", note: "Перед смыканием ботвы" },
+        { day: 50, action: "Повторная обработка от жука", note: "Через 10–14 дней" },
+        { day: 60, action: "Обработка от фитофторы", note: "Фитоспорин, 1% бордоская" },
+        { day: 70, action: "Скашивание ботвы", note: "За 2 недели до уборки" },
+        { day: 90, action: "Уборка урожая", note: "Сухая погода, копать в сухую землю" }
+      ]
+    },
+    cabbage: {
+      name: "Капуста",
+      icon: "🥬",
+      daysToHarvest: 120,
+      steps: [
+        { day: 0,  action: "Посев на рассаду", note: "Ранние сорта — февраль-март" },
+        { day: 30, action: "Высадка рассады", note: "На расстоянии 40×60 см" },
+        { day: 40, action: "Первая подкормка", note: "Азот" },
+        { day: 50, action: "Обработка от гусениц", note: "«Лепидоцид», «Битоксибациллин»" },
+        { day: 60, action: "Окучивание", note: "Для устойчивости и рыхления" },
+        { day: 70, action: "Подкормка с золой", note: "Калий и фосфор" },
+        { day: 90, action: "Повторная обработка от белянки", note: "Каждые 10–14 дней" },
+        { day: 120, action: "Уборка", note: "До заморозков" }
+      ]
+    },
+    pepper: {
+      name: "Перец",
+      icon: "🫑",
+      daysToHarvest: 130,
+      steps: [
+        { day: 0,  action: "Посев на рассаду", note: "Глубина 1 см, t +25°C" },
+        { day: 20, action: "Пикировка", note: "Когда 2 настоящих листа" },
+        { day: 45, action: "Первая подкормка", note: "Комплексное удобрение" },
+        { day: 60, action: "Высадка в теплицу", note: "t почвы +18°C" },
+        { day: 75, action: "Подкормка с калием", note: "Для плодоношения" },
+        { day: 90, action: "Формирование куста", note: "Удалить пасынки до первой развилки" },
+        { day: 110, action: "Начало плодоношения" },
+        { day: 130, action: "Массовый сбор" }
+      ]
+    },
+    carrot: {
+      name: "Морковь",
+      icon: "🥕",
+      daysToHarvest: 100,
+      steps: [
+        { day: 0,  action: "Посев в грунт", note: "Влажная земля, глубина 1–2 см" },
+        { day: 14, action: "Первый полив", note: "Осторожно, чтобы не смыть всходы" },
+        { day: 21, action: "Первое прореживание", note: "3 см между растениями" },
+        { day: 30, action: "Обработка от морковной мухи", note: "Луковый настой по ботве" },
+        { day: 45, action: "Второе прореживание", note: "5–7 см между растениями" },
+        { day: 55, action: "Подкормка с фосфором и калием", note: "Без азота — пойдёт в ботву" },
+        { day: 70, action: "Обработка от мухи", note: "Повтор через 10 дней" },
+        { day: 100, action: "Уборка", note: "До первых заморозков" }
+      ]
+    },
+    beet: {
+      name: "Свёкла",
+      icon: "🍠",
+      daysToHarvest: 100,
+      steps: [
+        { day: 0,  action: "Посев в грунт", note: "На глубину 2–3 см" },
+        { day: 21, action: "Прореживание", note: "Оставить 5 см" },
+        { day: 35, action: "Подкормка с борон", note: "Зола, калий" },
+        { day: 50, action: "Второе прореживание", note: "8–10 см между растениями" },
+        { day: 60, action: "Полив в засушливые периоды", note: "Раз в 3–5 дней" },
+        { day: 100, action: "Уборка", note: "Обрезать ботву на 1–2 см от корня" }
+      ]
+    },
+    onion: {
+      name: "Лук",
+      icon: "🧅",
+      daysToHarvest: 90,
+      steps: [
+        { day: 0,  action: "Посадка севка", note: "Глубина 2–3 см, шаг 8–10 см" },
+        { day: 20, action: "Первая подкормка", note: "Азофоска" },
+        { day: 40, action: "Обработка от луковой мухи", note: "Соль 1 стакан на 10 л по перу" },
+        { day: 55, action: "Вторая подкормка", note: "Калий" },
+        { day: 70, action: "Прекратить полив", note: "За 3 недели до уборки" },
+        { day: 90, action: "Уборка", note: "Когда перо полегло и засохло" }
+      ]
+    },
+    garlic: {
+      name: "Чеснок",
+      icon: "🧄",
+      daysToHarvest: 240,
+      steps: [
+        { day: 0,  action: "Посадка (озимый — октябрь)", note: "Глубина 5–6 см, шаг 10 см" },
+        { day: 180, action: "Весенняя подкормка", note: "Азот, когда появится зелень" },
+        { day: 200, action: "Обработка от луковой мухи", note: "Соль, зола" },
+        { day: 210, action: "Выламывание стрелок", note: "Оставить 1–2 для ориентира" },
+        { day: 240, action: "Уборка", note: "Когда стрелка выпрямилась" }
+      ]
+    },
+    strawberry: {
+      name: "Земляника / Клубника",
+      icon: "🍓",
+      daysToHarvest: 60,
+      steps: [
+        { day: 0,  action: "Посадка усов или делёнок", note: "На грядку с мульчей" },
+        { day: 14, action: "Первая подкормка", note: "Комплексное" },
+        { day: 30, action: "Обрезка усов", note: "Не давать тратить силы" },
+        { day: 45, action: "Обработка от серой гнили", note: "Фитоспорин, зола" },
+        { day: 55, action: "Цветение", note: "Подкормить калием" },
+        { day: 60, action: "Первые ягоды", note: "Собирать каждые 2 дня, утром" }
+      ]
+    },
+    apple: {
+      name: "Яблоня",
+      icon: "🍎",
+      daysToHarvest: 365,
+      steps: [
+        { day: 0,  action: "Посадка саженца", note: "Осень или весна, до распускания почек" },
+        { day: 30, action: "Обрезка формирующая", note: "Первый ярус ветвей" },
+        { day: 90, action: "Обработка от вредителей", note: "Весной — «Актара» и т.п." },
+        { day: 200, action: "Подкормка калием и фосфором", note: "Осенью для подготовки к зиме" },
+        { day: 340, action: "Побелка ствола", note: "От солнечных ожогов, весной" },
+        { day: 365, action: "Сбор урожая", note: "Когда плод отделяется легко" }
+      ]
+    }
+  },
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const plans = Store.get("agronom_plans", []);
+    const upcoming = [];
+    plans.forEach(plan => {
+      const culture = this.cultures[plan.culture];
+      if (!culture) return;
+      const startDate = new Date(plan.startDate);
+      culture.steps.forEach((step, idx) => {
+        const dueDate = new Date(startDate);
+        dueDate.setDate(dueDate.getDate() + step.day);
+        const iso = dueDate.toISOString().slice(0, 10);
+        const days = Utils.daysUntil(iso);
+        if (days >= -7 && days <= 14) {
+          upcoming.push({
+            planId: plan.id,
+            culture: culture.name,
+            icon: culture.icon,
+            step: step,
+            dueDate: iso,
+            days,
+            done: plan.doneSteps?.includes(idx)
+          });
+        }
+      });
+    });
+    upcoming.sort((a, b) => a.days - b.days);
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">🌱 Агроном — планы посадок</div>
+        <p class="text-sm">Создай план — приложение само напомнит о каждом шаге (подкормка, обработка, окучивание).</p>
+        <button class="btn btn-primary btn-block mt-8" id="agro-add">+ Новый план посадки</button>
+      </div>
+
+      ${upcoming.length ? `
+        <div class="card warn">
+          <div class="card-title">⚠ Что делать сейчас / скоро</div>
+          ${upcoming.map(u => `
+            <div class="list-item" data-agro-done="${u.planId}-${u.step.day}">
+              <span class="li-icon">${u.done ? "✅" : u.icon}</span>
+              <div class="li-body">
+                <div class="li-title" style="${u.done ? "text-decoration:line-through;opacity:.5" : ""}">${Utils.escape(u.step.action)}</div>
+                <div class="li-sub">${u.culture} · ${Utils.fmtDate(u.dueDate)} ${u.days === 0 ? "(сегодня!)" : u.days < 0 ? "(просрочено)" : "через " + u.days + " дн."}</div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+
+      <h3 style="margin:16px 0 8px;font-size:15px;color:var(--text-muted);text-transform:uppercase">Мои планы (${plans.length})</h3>
+      <div id="agro-plans-list"></div>
+    `;
+
+    document.getElementById("agro-add").addEventListener("click", () => this.openAddPlan());
+
+    const listEl = document.getElementById("agro-plans-list");
+    if (!plans.length) {
+      listEl.innerHTML = `<div class="empty"><span class="emoji">🌱</span><p>Нет планов. Добавь первый — томаты или картофель</p></div>`;
+    } else {
+      listEl.innerHTML = plans.map(p => {
+        const c = this.cultures[p.culture];
+        if (!c) return "";
+        const days = Utils.daysBetween(p.startDate, Utils.todayISO());
+        const totalSteps = c.steps.length;
+        const doneCount = (p.doneSteps || []).length;
+        const pct = Math.round(doneCount / totalSteps * 100);
+        const nextStep = c.steps.find((s, i) => !(p.doneSteps || []).includes(i));
+        return `
+          <div class="card">
+            <div class="row between mb-8">
+              <b>${c.icon} ${Utils.escape(c.name)}</b>
+              <button class="li-btn" data-agro-del="${p.id}">🗑</button>
+            </div>
+            <div class="text-xs text-muted">Посажено: ${Utils.fmtDate(p.startDate)} · ${days} дн. назад</div>
+            <div class="progress mt-8"><div class="progress-bar honey" style="width:${pct}%"></div></div>
+            <div class="row between mt-8">
+              <span class="text-xs">${doneCount}/${totalSteps} шагов</span>
+              <span class="badge badge-info">${pct}%</span>
+            </div>
+            ${nextStep ? `<div class="text-xs mt-8">Следующий шаг: <b>${Utils.escape(nextStep.action)}</b></div>` : `<div class="text-xs mt-8" style="color:var(--green-700)">✅ Все шаги выполнены!</div>`}
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Обработчики «сделано»
+    wrap.querySelectorAll("[data-agro-done]").forEach(el => {
+      el.addEventListener("click", () => {
+        const [planId, dayStr] = el.dataset.agroDone.split("-");
+        const day = +dayStr;
+        const plans2 = Store.get("agronom_plans", []);
+        const plan = plans2.find(p => p.id === planId);
+        if (!plan) return;
+        const culture = this.cultures[plan.culture];
+        const stepIdx = culture.steps.findIndex(s => s.day === day);
+        if (stepIdx < 0) return;
+        if (!plan.doneSteps) plan.doneSteps = [];
+        if (plan.doneSteps.includes(stepIdx)) {
+          plan.doneSteps = plan.doneSteps.filter(i => i !== stepIdx);
+        } else {
+          plan.doneSteps.push(stepIdx);
+        }
+        Store.set("agronom_plans", plans2);
+        this.render(containerId);
+      });
+    });
+
+    // Удаление плана
+    wrap.querySelectorAll("[data-agro-del]").forEach(b => {
+      b.addEventListener("click", () => {
+        if (!confirm("Удалить план?")) return;
+        Store.set("agronom_plans", Store.get("agronom_plans", []).filter(p => p.id !== b.dataset.agroDel));
+        this.render(containerId);
+      });
+    });
+  },
+
+  openAddPlan() {
+    const options = Object.keys(this.cultures).map(k => `<option value="${k}">${this.cultures[k].icon} ${this.cultures[k].name}</option>`).join("");
+    Modal.open("Новый план посадки", `
+      <div class="field"><label>Культура</label>
+        <select id="ap-culture">${options}</select>
+      </div>
+      <div class="field"><label>Дата посадки / посева</label>
+        <input type="date" id="ap-date" value="${Utils.todayISO()}">
+      </div>
+      <div class="field"><label>Место</label>
+        <input id="ap-place" placeholder="Теплица / Грядка №3">
+      </div>
+      <button class="btn btn-primary btn-block" id="ap-save">Создать план</button>
+    `, () => {
+      document.getElementById("ap-save").addEventListener("click", () => {
+        const plans = Store.get("agronom_plans", []);
+        plans.push({
+          id: Utils.uid(),
+          culture: document.getElementById("ap-culture").value,
+          startDate: document.getElementById("ap-date").value,
+          place: document.getElementById("ap-place").value.trim(),
+          doneSteps: []
+        });
+        Store.set("agronom_plans", plans);
+        Modal.close();
+        Toast.show("План создан", "success");
+        this.render("agro-content");
+      });
+    });
+  }
+};
+
+window.Agronom = Agronom;
+
+/* =========================================================
+   2. ВЕТ-АПТЕЧКА
+   ========================================================= */
+const VetKit = {
+  // Справочник по видам животных
+  guides: {
+    "Куры": {
+      icon: "🐔",
+      meds: [
+        { name:"Вакцина Ньюкасл (НБ)", use:"1 раз в год, капельно или с водой" },
+        { name:"Вакцина Гамборо (ИББ)", use:"По эпизоотии, с водой" },
+        { name:"Глистогон (Альбен, Пирантел)", use:"2 раза в год, по весу" },
+        { name:"Кокцидиостатик («Байкокс»)", use:"При поносе, с водой" },
+        { name:"Витамины (Чиктоник, Тривит)", use:"Курсами 5–7 дней" },
+        { name:"Антибиотик (Тетрациклин)", use:"По показаниям, только с ветврачом!" },
+        { name:"АСД-2 фракция", use:"Для иммунитета, 5 капель на 1 л воды" }
+      ]
+    },
+    "Козы": {
+      icon: "🐐",
+      meds: [
+        { name:"Вакцина от сибирской язвы", use:"1 раз в год" },
+        { name:"Пастереллёз", use:"По графику ветслужбы" },
+        { name:"Глистогон (Ивермек, Альбен)", use:"2 раза в год" },
+        { name:"Копытная ванна (медный купорос)", use:"Профилактика 2 раза в год" },
+        { name:"Антибиотики (Бициллин)", use:"Только по назначению" },
+        { name:"Витамины А, D, Е", use:"Зимой" }
+      ]
+    },
+    "Коровы": {
+      icon: "🐄",
+      meds: [
+        { name:"Вакцина от ящура", use:"По графику ветслужбы" },
+        { name:"Сибирка, бешенство", use:"1 раз в год" },
+        { name:"Гиподерматоз (подкожный овод)", use:"Осень/весна" },
+        { name:"Глистогон", use:"2 раза в год" },
+        { name:"Копытная ванна", use:"Профилактика" },
+        { name:"Маститные препараты", use:"При маститах, по инструкции" }
+      ]
+    },
+    "Кролики": {
+      icon: "🐇",
+      meds: [
+        { name:"Вакцина от миксоматоза", use:"1 раз в год, весной" },
+        { name:"Вакцина от ВГБК", use:"1 раз в год, за 2 недели до миксоматоза" },
+        { name:"Кокцидиостатик", use:"Курсами или в корме" },
+        { name:"Антибиотики", use:"По показаниям" }
+      ]
+    },
+    "Свиньи": {
+      icon: "🐖",
+      meds: [
+        { name:"Вакцина от чумы", use:"По графику" },
+        { name:"Рожа, ящур", use:"По графику" },
+        { name:"Глистогон", use:"2 раза в год" },
+        { name:"Обработка от вшей/клещей (Ивермек)", use:"По необходимости" }
+      ]
+    },
+    "Собаки": {
+      icon: "🐕",
+      meds: [
+        { name:"Вакцина от бешенства", use:"1 раз в год" },
+        { name:"Комплексная вакцина (DHPPi)", use:"1 раз в год" },
+        { name:"От клещей (Бравекто, Фронтлайн)", use:"Каждые 12 недель или 1 мес" },
+        { name:"От глистов (Дронтал)", use:"Каждые 3–6 мес" },
+        { name:"От блох", use:"По необходимости" }
+      ]
+    },
+    "Кошки": {
+      icon: "🐈",
+      meds: [
+        { name:"Вакцина от бешенства", use:"1 раз в год" },
+        { name:"Комплексная (FVRCP)", use:"1 раз в год" },
+        { name:"От клещей (Фронтлайн)", use:"Ежемесячно в сезон" },
+        { name:"От глистов", use:"Каждые 3–6 мес" }
+      ]
+    }
+  },
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const stock = Store.get("vet_kit", []);
+    const expired = stock.filter(s => s.exp && Utils.daysUntil(s.exp) < 0);
+    const soon = stock.filter(s => s.exp && Utils.daysUntil(s.exp) >= 0 && Utils.daysUntil(s.exp) < 60);
+
+    wrap.innerHTML = `
+      <div class="card ${expired.length ? 'danger' : 'success'}">
+        <div class="card-title">🩺 Вет-аптечка</div>
+        <div class="row between">
+          <div><div style="font-size:22px;font-weight:800">${stock.length}</div><div class="text-muted text-xs">записей</div></div>
+          <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--warning)">${soon.length}</div><div class="text-muted text-xs">истекает</div></div>
+          <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--danger)">${expired.length}</div><div class="text-muted text-xs">просрочено</div></div>
+        </div>
+      </div>
+
+      <div id="vet-kit-list"></div>
+
+      <h3 style="margin:16px 0 8px;font-size:15px;color:var(--text-muted);text-transform:uppercase">Справочник по видам</h3>
+      <div id="vet-guides"></div>
+    `;
+
+    ListEngine.mount("vet-kit-list", {
+      storeKey: "vet_kit",
+      title: "Мои препараты",
+      icon: "💊",
+      fields: [
+        { key:"name", label:"Название", type:"text", required:true, placeholder:"Вакцина Ньюкасл" },
+        { key:"for", label:"Для кого", type:"select",
+          options: Object.keys(this.guides) },
+        { key:"qty", label:"Количество", type:"text" },
+        { key:"exp", label:"Срок годности", type:"date" },
+        { key:"storage", label:"Условия хранения", type:"text", placeholder:"Холодильник, +2…+8°C" },
+        { key:"note", label:"Заметка", type:"textarea" }
+      ],
+      renderItem: (it) => {
+        let badge = null, badgeClass = "badge-green";
+        if (it.exp) {
+          const days = Utils.daysUntil(it.exp);
+          if (days < 0) { badge = "просрочено"; badgeClass = "badge-danger"; }
+          else if (days < 30) { badge = days + " дн."; badgeClass = "badge-danger"; }
+          else if (days < 60) { badge = days + " дн."; badgeClass = "badge-warn"; }
+        }
+        return {
+          title: it.name + (it.qty ? " · " + it.qty : ""),
+          sub: `${it.for || ""}${it.storage ? " · " + it.storage : ""}`,
+          icon: this.guides[it.for]?.icon || "💊",
+          badge, badgeClass
+        };
+      }
+    });
+
+    // Справочник
+    const guides = document.getElementById("vet-guides");
+    guides.innerHTML = Object.keys(this.guides).map(k => {
+      const g = this.guides[k];
+      return `
+        <div class="accordion">
+          <div class="accordion-head">${g.icon} ${k} <span class="arrow">▶</span></div>
+          <div class="accordion-body">
+            <ul style="margin-left:20px;font-size:14px">
+              ${g.meds.map(m => `<li style="margin-bottom:8px"><b>${Utils.escape(m.name)}</b><br><span class="text-muted text-sm">${Utils.escape(m.use)}</span></li>`).join("")}
+            </ul>
+          </div>
+        </div>
+      `;
+    }).join("");
+    bindAccordions(guides);
+  }
+};
+
+window.VetKit = VetKit;
+
+/* =========================================================
+   3. ОПРЕДЕЛИТЕЛЬ БОЛЕЗНЕЙ РАСТЕНИЙ (дерево вопросов)
+   ========================================================= */
+const PlantDoctor = {
+  tree: {
+    start: {
+      question: "Где ты видишь проблему?",
+      options: [
+        { text: "На листьях", next: "leaves" },
+        { text: "На плодах", next: "fruits" },
+        { text: "На стеблях / стволе", next: "stems" },
+        { text: "На корнях", next: "roots" },
+        { text: "Растение вянет целиком", next: "wilt" }
+      ]
+    },
+    leaves: {
+      question: "Что на листьях?",
+      options: [
+        { text: "Жёлтые пятна", next: "leafYellowSpots" },
+        { text: "Бурые пятна", next: "leafBrownSpots" },
+        { text: "Белый налёт", next: "leafWhite" },
+        { text: "Скручиваются", next: "leafCurl" },
+        { text: "Дырки", next: "leafHoles" },
+        { text: "Маленькие насекомые", next: "leafInsects" },
+        { text: "Паутина", next: "leafWeb" }
+      ]
+    },
+    leafYellowSpots: {
+      results: [
+        { name:"Хлороз", desc:"Нехватка железа или азота. Полить хелатом железа или аммиачной селитрой. Проверить pH почвы." },
+        { name:"Мозаика (вирус)", desc:"Жёлтая мозаика на листьях. Вирус, лечения нет. Удалить растение, сжечь. Бороться с тлёй (переносчик)." },
+        { name:"Ложная мучнистая роса", desc:"Сначала жёлтые пятна сверху, потом серый налёт снизу. Обработать «Ридомил Голд», улучшить проветривание." }
+      ]
+    },
+    leafBrownSpots: {
+      results: [
+        { name:"Фитофтора", desc:"Бурые пятна с белым ободком снизу. Обработать 1% бордоской или «Фитоспорином». Убрать нижние листья, не поливать по листу." },
+        { name:"Альтернариоз", desc:"Крупные бурые пятна с чёрным налётом. Убрать поражённые листья, обработать «Абига-Пик»." },
+        { name:"Септориоз", desc:"Мелкие бурые пятна с чёрными точками. «Скор», «Раёк». Убирать растительные остатки." },
+        { name:"Бактериальная пятнистость", desc:"Маслянистые пятна. Антибиотики не помогут — удалить растение. Севооборот." }
+      ]
+    },
+    leafWhite: {
+      results: [
+        { name:"Мучнистая роса", desc:"Белый налёт сверху. Распылить 1% соду с мылом или «Топаз». Улучшить проветривание, не загущать." },
+        { name:"Ложная мучнистая роса (пероноспороз)", desc:"Белый/серый налёт снизу листа. «Ридомил Голд», «Квадрис». Убрать больные листья." }
+      ]
+    },
+    leafCurl: {
+      results: [
+        { name:"Тля", desc:"Листья скручиваются, липкие. Обработать мыльно-зольным раствором или «Актарой». Божьи коровки помогают." },
+        { name:"Вирус скручивания", desc:"Сильное скручивание, деформация. Вирус, растение удалить. Борьба с тлёй." },
+        { name:"Клещ", desc:"Листья скручиваются, бледнеют. «Фитоверм», «Актеллик». Повысить влажность." }
+      ]
+    },
+    leafHoles: {
+      results: [
+        { name:"Гусеницы / личинки", desc:"Осмотреть нижнюю сторону листа. «Лепидоцид», «Битоксибациллин» — биологические." },
+        { name:"Слизни", desc:"Оставляют слизь. Доломитовая мука, зола вокруг растений, ловушки с пивом." },
+        { name:"Жук-листоед", desc:"Края листьев объедены. Ручной сбор или «Актара»." },
+        { name:"Проволочник (на корнеплодах)", desc:"Дырки в корнеплодах. Известкование, сидераты (фацелия), «Престиж»." }
+      ]
+    },
+    leafInsects: {
+      results: [
+        { name:"Тля", desc:"Мелкие зелёные/чёрные насекомые. Мыло+зола, «Актара». Привлекать божьих коровок." },
+        { name:"Белокрылка", desc:"Белые мошки, взлетают при касании. «Актара», «Фуфанон». Клеевые ловушки." },
+        { name:"Трипсы", desc:"Мелкие, чёрные точки, серебристые штрихи. «Фитоверм», «Актара»." },
+        { name:"Колорадский жук", desc:"Полосатый жук и красные личинки. Сбор вручную, «Престиж», «Командор»." }
+      ]
+    },
+    leafWeb: {
+      results: [
+        { name:"Паутинный клещ", desc:"Тонкая паутина, пожелтение. «Фитоверм», «Актеллик». Повысить влажность, опрыскивать водой." },
+        { name:"Гусеницы (паутинные)", desc:"Гнёзда с паутиной. Удалить руками, «Лепидоцид»." }
+      ]
+    },
+    fruits: {
+      question: "Что на плодах?",
+      options: [
+        { text: "Бурые / чёрные пятна", next: "fruitBrownSpots" },
+        { text: "Гниль", next: "fruitRot" },
+        { text: "Червоточина", next: "fruitWorms" },
+        { text: "Трещины", next: "fruitCracks" }
+      ]
+    },
+    fruitBrownSpots: {
+      results: [
+        { name:"Фитофтора", desc:"Тёмные твёрдые пятна. Убрать поражённые плоды, сжечь. Обработать куст." },
+        { name:"Вершинная гниль", desc:"Тёмное пятно на верхушке (у томатов, перца). Нехватка кальция — полить кальциевой селитрой. Регулярный полив." },
+        { name:"Антракноз", desc:"Вдавленные тёмные пятна. Обработать «Строби», «Квадрис»." }
+      ]
+    },
+    fruitRot: {
+      results: [
+        { name:"Серая гниль", desc:"Серый пух. Убрать поражённые, проветривать, не переувлажнять. «Свитч»." },
+        { name:"Белая гниль", desc:"Белый ватообразный налёт. Удалить растение, сжечь. Известкование." },
+        { name:"Чёрная ножка (у рассады)", desc:"Потемнение стебля у земли. Проветривать, полить марганцовкой или «Фитоспорином»." }
+      ]
+    },
+    fruitWorms: {
+      results: [
+        { name:"Плодожорка", desc:"Ходы внутри плода. Ловчие пояса, «Лепидоцид». Опрыскивание через 10 дней после цветения." },
+        { name:"Совка", desc:"Гусеницы объедают. «Лепидоцид», ручной сбор." },
+        { name:"Проволочник / личинки", desc:"В корнеплодах. Известкование, сидераты." }
+      ]
+    },
+    fruitCracks: {
+      results: [
+        { name:"Неравномерный полив", desc:"То сухо, то вода. Поливать регулярно, мульчировать." },
+        { name:"Скачок температуры", desc:"Быстрое созревание. Ничего не сделать, но сорт устойчивее нужен." },
+        { name:"Избыток азота", desc:"Кожа не успевает за ростом. Уменьшить азотные подкормки." }
+      ]
+    },
+    stems: {
+      question: "Что на стебле / стволе?",
+      options: [
+        { text: "Чёрный / тёмный", next: "stemBlack" },
+        { text: "Трещины", next: "stemCracks" },
+        { text: "Налёт / плесень", next: "stemMold" },
+        { text: "Дырки / ходы", next: "stemHoles" }
+      ]
+    },
+    stemBlack: {
+      results: [
+        { name:"Чёрная ножка", desc:"Потемнение у основания. Проветривание, не переувлажнять. Марганцовка или «Фитоспорин»." },
+        { name:"Корневая гниль", desc:"Тёмное основание, растение вянет. Улучшить дренаж, полить «Фитоспорином»." },
+        { name:"Фузариоз", desc:"Потемнение сосудов. Лечения нет — удалить растение. Севооборот, известкование." }
+      ]
+    },
+    stemCracks: {
+      results: [
+        { name:"Растрескивание коры (деревья)", desc:"Морозобоины или солнечные ожоги. Зачистить, обработать садовым варом." },
+        { name:"Неравномерный рост", desc:"У томатов — избыток воды и азота. Уменьшить полив." }
+      ]
+    },
+    stemMold: {
+      results: [
+        { name:"Серая гниль", desc:"Серый пух. Удалить, проветрить. «Свитч»." },
+        { name:"Плесень (грибок)", desc:"Белый или зеленоватый налёт. Улучшить вентиляцию, обработать фунгицидом." }
+      ]
+    },
+    stemHoles: {
+      results: [
+        { name:"Короед (деревья)", desc:"Ходы под корой. Инсектициды в ходы, ловчие пояса. Сильно поражённые — спилить." },
+        { name:"Пилильщик", desc:"Ходы в стеблях малины/ежевики. Обрезать до здоровой ткани, сжечь." },
+        { name:"Стеклянница (смородина)", desc:"Гусеницы в стеблях, верхушки вянут. Обрезать побеги до основания, сжечь." }
+      ]
+    },
+    roots: {
+      question: "Что с корнями?",
+      options: [
+        { text: "Гниль", next: "rootRot" },
+        { text: "Жёлтые/белые наросты", next: "rootBumps" },
+        { text: "Объедены", next: "rootEaten" }
+      ]
+    },
+    rootRot: {
+      results: [
+        { name:"Корневая гниль", desc:"Мягкие бурые корни. Улучшить дренаж, полить «Фитоспорином», убрать больные растения." },
+        { name:"Чёрная ножка", desc:"Основание стебля чёрное. Проветрить, не заливать, марганцовка." }
+      ]
+    },
+    rootBumps: {
+      results: [
+        { name:"Кила (капуста)", desc:"Жёлто-белые наросты на корнях. Известкование, севооборот, удалить растение, сжечь." },
+        { name:"Нематода", desc:"Мелкие наросты. Бархатцы рядом, севооборот, сидераты (фацелия)." }
+      ]
+    },
+    rootEaten: {
+      results: [
+        { name:"Медведка", desc:"Подъедает корни. «Медветокс», «Гром», ловушки с навозом." },
+        { name:"Личинки хруща", desc:"Крупные белые личинки. Известкование, перекопка, «Престиж»." },
+        { name:"Проволочник", desc:"Жёсткие жёлтые червяки. Известкование, горчица сидерат." }
+      ]
+    },
+    wilt: {
+      results: [
+        { name:"Фузариоз / вертициллёз", desc:"Растение вянет и засыхает. Лечения нет. Удалить, сжечь. Севооборот, устойчивые сорта." },
+        { name:"Корневая гниль", desc:"Основание стебля чёрное. Дренаж, «Фитоспорин»." },
+        { name:"Обезвоживание", desc:"Проверить полив — возможно, просто пересохло." },
+        { name:"Затопление", desc:"Проверить дренаж. Корешки могут задыхаться." },
+        { name:"Повреждение корней", desc:"Перекопка или вредитель. Аккуратно полить «Корневином»." }
+      ]
+    }
+  },
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+      <div class="card info">
+        <div class="card-title">🔍 Определитель болезней растений</div>
+        <p class="text-sm">Отвечай на вопросы — приложение поставит диагноз и даст лечение.</p>
+      </div>
+      <div id="doctor-tree"></div>
+    `;
+
+    this.renderNode("start", "doctor-tree");
+  },
+
+  renderNode(key, containerId, history = []) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    const node = this.tree[key];
+    if (!node) { wrap.innerHTML = `<div class="text-muted">Ошибка навигации</div>`; return; }
+
+    // Хлебные крошки
+    let breadcrumb = "";
+    if (history.length) {
+      breadcrumb = `<div class="text-xs text-muted mb-12">${history.map(h => Utils.escape(h)).join(" → ")}</div>`;
+    }
+
+    // Если это результат
+    if (node.results) {
+      wrap.innerHTML = `
+        ${breadcrumb}
+        <div class="card danger">
+          <div class="card-title">🩺 Возможные диагнозы</div>
+          <div class="text-xs text-muted mb-8">Наиболее вероятно (сверху вниз):</div>
+          <div class="list">
+            ${node.results.map((r, i) => `
+              <div class="list-item" style="${i === 0 ? "border-left:4px solid var(--danger)" : ""}">
+                <span class="li-icon">${i + 1}</span>
+                <div class="li-body">
+                  <div class="li-title">${Utils.escape(r.name)}</div>
+                  <div class="li-sub">${Utils.escape(r.desc)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+          <button class="btn btn-secondary btn-block mt-12" onclick="PlantDoctor.start('${containerId}')">🔄 Начать заново</button>
+        </div>
+        <div class="card warn">
+          <div class="card-title">⚠ Важно</div>
+          <p class="text-sm">Определитель — это подсказка, а не точный диагноз. При серьёзной проблеме — фото в агрофорум или к специалисту.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Вопрос
+    wrap.innerHTML = `
+      ${breadcrumb}
+      <div class="card">
+        <div class="card-title">${Utils.escape(node.question)}</div>
+        <div class="list">
+          ${node.options.map((o, i) => `
+            <div class="list-item" data-opt="${i}" style="cursor:pointer">
+              <span class="li-icon">${o.icon || "▸"}</span>
+              <div class="li-body"><div class="li-title">${Utils.escape(o.text)}</div></div>
+            </div>
+          `).join("")}
+        </div>
+        ${history.length ? `<button class="btn btn-ghost btn-sm btn-block mt-12" onclick="PlantDoctor.start('${containerId}')">🔄 Сначала</button>` : ""}
+      </div>
+    `;
+
+    wrap.querySelectorAll("[data-opt]").forEach(el => {
+      el.addEventListener("click", () => {
+        const opt = node.options[+el.dataset.opt];
+        this.renderNode(opt.next, containerId, [...history, node.question.slice(0, 30), opt.text]);
+      });
+    });
+  },
+
+  start(containerId) {
+    this.renderNode("start", containerId);
+  }
+};
+
+window.PlantDoctor = PlantDoctor;
+
+/* =========================================================
+   4. МЕДОВАЯ КАРТА — что цветёт вокруг пасеки
+   ========================================================= */
+const HoneyMap = {
+  // Календарь медоносов по месяцам
+  honeyCalendar: {
+    "4": [ // апрель
+      { name:"Ива", icon:"🌳", honey:"Средний", note:"Первый сильный взяток, до 30 кг с семьи" },
+      { name:"Мать-и-мачеха", icon:"🌼", honey:"Слабый", note:"Ранний поддерживающий" },
+      { name:"Одуванчик", icon:"🌻", honey:"Средний", note:"Массовое цветение в конце апреля" },
+      { name:"Клён остролистный", icon:"🌳", honey:"Средний", note:"Если рядом лес" }
+    ],
+    "5": [
+      { name:"Яблоня", icon:"🍎", honey:"Средний", note:"Сады — важный медонос" },
+      { name:"Смородина, крыжовник", icon:"🍇", honey:"Средний" },
+      { name:"Акация белая", icon:"🌸", honey:"Очень сильный", note:"Лучший взяток, до 50 кг с семьи" },
+      { name:"Клевер белый", icon:"🍀", honey:"Средний" },
+      { name:"Рапс", icon:"🌼", honey:"Сильный", note:"Один из главных медоносов" }
+    ],
+    "6": [
+      { name:"Липа", icon:"🌳", honey:"Очень сильный", note:"Легендарный медонос, до 50 кг с семьи" },
+      { name:"Малина", icon:"🍓", honey:"Средний" },
+      { name:"Донник", icon:"🌿", honey:"Сильный" },
+      { name:"Эспарцет", icon:"🌾", honey:"Сильный" },
+      { name:"Василёк", icon:"🌺", honey:"Слабый" },
+      { name:"Гречиха", icon:"🌾", honey:"Сильный", note:"Тёмный мёд с горчинкой" }
+    ],
+    "7": [
+      { name:"Липа (продолжение)", icon:"🌳", honey:"Сильный" },
+      { name:"Подсолнечник", icon:"🌻", honey:"Сильный", note:"Май-июль" },
+      { name:"Люцерна", icon:"🌿", honey:"Средний" },
+      { name:"Донник белый", icon:"🌿", honey:"Сильный" },
+      { name:"Фацелия", icon:"💜", honey:"Сильный" },
+      { name:"Иван-чай", icon:"🌸", honey:"Средний" }
+    ],
+    "8": [
+      { name:"Подсолнечник", icon:"🌻", honey:"Сильный" },
+      { name:"Гречиха (продолжение)", icon:"🌾", honey:"Сильный" },
+      { name:"Донник", icon:"🌿", honey:"Средний" },
+      { name:"Шалфей", icon:"💜", honey:"Средний" },
+      { name:"Мята полевая", icon:"🌿", honey:"Средний" }
+    ],
+    "9": [
+      { name:"Золотая розга", icon:"🌼", honey:"Средний", note:"Осенний поддерживающий" },
+      { name:"Вереск", icon:"💜", honey:"Средний", note:"Терпкий вересковый мёд" },
+      { name:"Цикорий", icon:"💙", honey:"Средний" },
+      { name:"Одуванчик осенний", icon:"🌻", honey:"Слабый" }
+    ]
+  },
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const month = new Date().getMonth() + 1;
+    const current = this.honeyCalendar[month] || [];
+    const nextMonth = month + 1;
+    const next = this.honeyCalendar[nextMonth] || [];
+
+    // Лётные дни по погоде
+    let flyingDays = 0;
+    const weather = Store.get("weather_cache", null);
+    if (weather?.data?.daily) {
+      weather.data.daily.forEach(d => {
+        if (d.tmax >= 15 && d.wind < 6 && (d.rain || 0) < 0.5) flyingDays++;
+      });
+    }
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">🍯 Медовая карта</div>
+        <p class="text-sm">Что цветёт вокруг пасеки и когда. Планируй осмотры и откачки.</p>
+        <div class="row between mt-12">
+          <div>
+            <div style="font-size:22px;font-weight:800">${current.length}</div>
+            <div class="text-muted text-xs">медоносов в ${Utils.monthName(month - 1).toLowerCase()}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--green-700)">${flyingDays}</div>
+            <div class="text-muted text-xs">лётных дней (прогноз 7 дн.)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🌼 Сейчас цветёт (${Utils.monthName(month - 1)})</div>
+        ${current.length ? current.map(h => `
+          <div class="list-item">
+            <span class="li-icon">${h.icon}</span>
+            <div class="li-body">
+              <div class="li-title">${Utils.escape(h.name)}</div>
+              <div class="li-sub">Взяток: ${h.honey}${h.note ? " · " + h.note : ""}</div>
+            </div>
+            <span class="badge ${h.honey === "Очень сильный" ? "badge-green" : h.honey === "Сильный" ? "badge-honey" : "badge-info"}">${h.honey}</span>
+          </div>
+        `).join("") : `<div class="text-muted text-sm">В этом месяце активных медоносов нет (зима).</div>`}
+      </div>
+
+      ${next.length ? `
+        <div class="card info">
+          <div class="card-title">📅 В следующем месяце (${Utils.monthName(nextMonth - 1)})</div>
+          ${next.map(h => `
+            <div class="row between" style="padding:6px 0;border-bottom:1px solid var(--border)">
+              <span class="text-sm">${h.icon} ${Utils.escape(h.name)}</span>
+              <span class="badge badge-info">${h.honey}</span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+
+      <div class="card">
+        <div class="card-title">🌡 Лётные дни</div>
+        <p class="text-sm">Пчёлы активно летают при t +15°C и выше, ветер до 6 м/с, без дождя.</p>
+        ${weather?.data?.daily ? `
+          <div class="row wrap mt-12">
+            ${weather.data.daily.map(d => {
+              const good = d.tmax >= 15 && d.wind < 6 && (d.rain || 0) < 0.5;
+              return `<div style="text-align:center;padding:6px;border-radius:6px;background:${good ? "var(--green-100)" : "var(--earth-100)"};min-width:44px">
+                <div class="text-xs">${Utils.fmtDateShort(d.date)}</div>
+                <div class="text-xs">${Math.round(d.tmax)}°</div>
+                <div>${good ? "✈" : "✕"}</div>
+              </div>`;
+            }).join("")}
+          </div>
+        ` : `<div class="text-muted text-sm">Загрузи погоду на главной или в разделе Погода</div>`}
+      </div>
+
+      <div class="card info">
+        <div class="card-title">💡 Советы</div>
+        <ul style="margin-left:20px;font-size:14px">
+          <li>Планируй откачки на конец сильных взятков (липа, акация)</li>
+          <li>Противороевые меры — за 2 недели до главного медосбора</li>
+          <li>После главного взятка — собери гнёзда, обработка от клеща</li>
+          <li>Если рядом поля с рапсом/подсолнечником — обязательно кочуй</li>
+          <li>Слабые взятки (ива, одуванчик) — для развития, не для откачки</li>
+        </ul>
+      </div>
+    `;
+  }
+};
+
+window.HoneyMap = HoneyMap;
+
+/* =========================================================
+   5. РЕГИСТРАЦИЯ ЭКРАНОВ (добавляем в главное меню)
+   ========================================================= */
+// Расширяем HomeMenu
+if (window.HomeMenu && HomeMenu.items) {
+  const newItems = [
+    { screen:"agro",     icon:"🌾", label:"Агроном",      desc:"Планы посадок с шагами", new:true },
+    { screen:"vetkit",   icon:"🩺", label:"Вет-аптечка",  desc:"Препараты для животных", new:true },
+    { screen:"doctor",   icon:"🔍", label:"Определитель", desc:"Болезни растений", new:true },
+    { screen:"honeymap", icon:"🍯", label:"Медовая карта",desc:"Медоносы и лётные дни", new:true }
+  ];
+  // Вставляем после «Советник»
+  const idx = HomeMenu.items.findIndex(i => i.screen === "advisor");
+  if (idx >= 0) {
+    HomeMenu.items.splice(idx + 1, 0, ...newItems);
+  } else {
+    HomeMenu.items.unshift(...newItems);
+  }
+
+  // Перерисовываем при следующем вызове — добавляем авто-рендер
+  if (window.Home && Home.render) {
+    const origHome3 = Home.render.bind(Home);
+    Home.render = function() {
+      // Принудительно перерисовываем меню с новыми пунктами
+      if (window.HomeMenu && HomeMenu.render) HomeMenu.render();
+      origHome3();
+    };
+  }
+}
+
+// Создаём HTML-секции для новых экранов
+(function createScreens() {
+  const screensToAdd = [
+    { id:"screen-agro",     title:"🌾 Агроном",          subtitle:"Планы посадок с автоматическими напоминаниями", contentId:"agro-content" },
+    { id:"screen-vetkit",   title:"🩺 Вет-аптечка",      subtitle:"Препараты для животных и справочник",           contentId:"vetkit-content" },
+    { id:"screen-doctor",   title:"🔍 Определитель",     subtitle:"Болезни растений по симптомам",                  contentId:"doctor-content" },
+    { id:"screen-honeymap", title:"🍯 Медовая карта",    subtitle:"Что цветёт вокруг пасеки, лётные дни",           contentId:"honeymap-content" }
+  ];
+
+  screensToAdd.forEach(s => {
+    if (document.getElementById(s.id)) return;
+    const div = document.createElement("section");
+    div.className = "screen";
+    div.id = s.id;
+    div.innerHTML = `
+      <h1 class="screen-title">${s.title}</h1>
+      <p class="screen-subtitle">${s.subtitle}</p>
+      <div id="${s.contentId}"></div>
+    `;
+    document.querySelector(".app-main").appendChild(div);
+  });
+
+  // Регистрируем хуки
+  window.ScreenHooks = window.ScreenHooks || {};
+  ScreenHooks.agro     = () => Agronom.render("agro-content");
+  ScreenHooks.vetkit   = () => VetKit.render("vetkit-content");
+  ScreenHooks.doctor   = () => PlantDoctor.render("doctor-content");
+  ScreenHooks.honeymap = () => HoneyMap.render("honeymap-content");
+})();
+
+/* =========================================================
+   6. ДОБАВЛЯЕМ «АГРОНОМ» В РАЗДЕЛ ОГОРОДА (как вкладку)
+   ========================================================= */
+if (window.Garden) {
+  const origRenderTab = Garden.renderTab.bind(Garden);
+  Garden.renderTab = function(tab) {
+    if (tab === "agro") {
+      const c = document.getElementById("garden-content");
+      if (c) Agronom.render("garden-content");
+      return;
+    }
+    return origRenderTab(tab);
+  };
+
+  // При первом рендере огородаWrap добавляем чипсы
+  const origG.datardenRender = Garden.render.bind(Garden);
+aset  Garden.render = function() {
+    const tabsWrap = document..getElementById("garden-tabs");
+   ag if (tabsWrap && !tabsroAdded) {
+      tabsWrap.dataset.agroAdded = "1";
+      tabsWrap.insertAdjacentHTML("afterbegin", `<span class="chip" data-tab="agro">🌾 Агроном</span>`);
+    }
+    return origGardenRender();
+  };
+}
+
+/* =========================================================
+   7. КОМАНДЫ В КОНСОЛЬ
+   ========================================================= */
+window.DVOR = window.DVOR || {};
+window.DVOR.agronom = Agronom;
+window.DVOR.vetkit = VetKit;
+window.DVOR.doctor = PlantDoctor;
+window.DVOR.honeyMap = HoneyMap;
+
+console.log("🌾 Блок 3 загружен: Агроном + Вет-аптечка + Определитель + Медовая карта");
+</script>
+<!-- ============================================= -->
+<!-- РАСШИРЕНИЕ БЛОК 4: ВРЕМЯ + КУЛИНАРИЯ + СТАНЦИЯ + РОДОСЛОВНАЯ + КООПЕРАЦИЯ -->
+<!-- ============================================= -->
+
+<script>
+"use strict";
+
+/* =========================================================
+   1. УЧЁТ ВРЕМЕНИ И СЕБЕСТОИМОСТЬ
+   ========================================================= */
+const TimeTracker = {
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const entries = Store.get("time_entries", []);
+    const hourlyRate = Store.get("my_hourly_rate", 300);
+
+    // Статистика по направлениям
+    const byCategory = {};
+    let totalHours = 0;
+    let totalCost = 0;
+    entries.forEach(e => {
+      if (!byCategory[e.category]) byCategory[e.category] = { hours: 0, count: 0 };
+      byCategory[e.category].hours += (+e.hours || 0);
+      byCategory[e.category].count += 1;
+      totalHours += (+e.hours || 0);
+    });
+    totalCost = totalHours * hourlyRate;
+
+    // За месяц
+    const now = new Date();
+    const monthHours = entries.filter(e => {
+      const d = new Date(e.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).reduce((s, e) => s + (+e.hours || 0), 0);
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">⏱ Учёт времени</div>
+        <p class="text-sm">Сколько часов уходит на хозяйство. Это твоя реальная себестоимость!</p>
+        <div class="row between mt-12">
+          <div>
+            <div style="font-size:26px;font-weight:800">${totalHours.toFixed(1)} ч</div>
+            <div class="text-muted text-xs">всего</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:700">${monthHours.toFixed(1)} ч</div>
+            <div class="text-muted text-xs">в этом месяце</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:700;color:var(--honey)">${Utils.formatNumber(totalCost)} ₽</div>
+            <div class="text-muted text-xs">по ставке ${hourlyRate} ₽/ч</div>
+          </div>
+        </div>
+        <div class="field mt-12">
+          <label>Твоя ставка ₽/ч</label>
+          <input type="number" id="tt-rate" value="${hourlyRate}">
+        </div>
+        <button class="btn btn-secondary btn-sm btn-block" id="tt-rate-save">Сохранить ставку</button>
+      </div>
+
+      ${Object.keys(byCategory).length ? `
+        <div class="card">
+          <div class="card-title">📊 По направлениям</div>
+          ${Object.entries(byCategory).sort((a, b) => b[1].hours - a[1].hours).map(([cat, data]) => `
+            <div style="margin-bottom:10px">
+              <div class="row between">
+                <span class="text-sm">${Utils.escape(cat)}</span>
+                <span class="text-xs">${data.hours.toFixed(1)} ч · ${data.count} записей</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:${Math.min(100, data.hours / totalHours * 100)}%"></div></div>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+
+      <div id="tt-list"></div>
+    `;
+
+    document.getElementById("tt-rate-save").addEventListener("click", () => {
+      const r = +document.getElementById("tt-rate").value || 300;
+      Store.set("my_hourly_rate", r);
+      Toast.show("Ставка сохранена", "success");
+      this.render(containerId);
+    });
+
+    ListEngine.mount("tt-list", {
+      storeKey: "time_entries",
+      title: "Записи времени",
+      icon: "⏱",
+      fields: [
+        { key:"date", label:"Дата", type:"date" },
+        { key:"category", label:"Направление", type:"select",
+          options:["Огород","Пасека","Живность","Стройка","Инженерия","Дом","Грибы/лес","Ремесло","Другое"] },
+        { key:"what", label:"Что делал", type:"text", required:true, placeholder:"Прополка грядок" },
+        { key:"hours", label:"Часов", type:"number", required:true },
+        { key:"people", label:"Человек", type:"number", default: 1 },
+        { key:"note", label:"Заметка", type:"textarea" }
+      ],
+      renderItem: (it) => ({
+        title: `${it.what} — ${it.hours} ч${it.people > 1 ? " × " + it.people : ""}`,
+        sub: `${Utils.fmtDate(it.date)} · ${it.category || ""}${it.note ? " · " + it.note : ""}`,
+        icon: "⏱"
+      }),
+      sort: (a, b) => (b.date || "").localeCompare(a.date || ""),
+      onChange: () => this.render(containerId)
+    });
+  }
+};
+
+window.TimeTracker = TimeTracker;
+
+/* =========================================================
+   2. КУЛИНАРНАЯ КНИГА ИЗ СВОИХ ЗАПАСОВ
+   ========================================================= */
+const CookBook = {
+  // Рецепты привязаны к ингредиентам
+  recipes: [
+    { name:"Шарлотка с яблоками", ing:["яблоко","яйцо","мука","сахар"], time:"50 мин", complexity:"Легко",
+      desc:"3 яйца + 200 г сахара взбить, + 200 г муки, + 4–5 яблок ломтиками. Печь 180°C 40 мин." },
+    { name:"Яблочное повидло", ing:["яблоко","сахар"], time:"2 ч", complexity:"Легко",
+      desc:"Яблоки очистить, уварить с сахаром 1:0.5 до густоты. В стерилизованные банки. Хранится год." },
+    { name:"Яблочный сок", ing:["яблоко"], time:"1 ч", complexity:"Легко",
+      desc:"Пропустить через соковыжималку. Пастеризовать 15 мин при 90°C. В банки." },
+    { name:"Мочёные яблоки", ing:["яблоко","соль","сахар"], time:"3 недели", complexity:"Средне",
+      desc:"Антоновка + рассол (10 л воды, 200 г соли, 100 г сахара, ржаная мука). 3 недели при +15°C." },
+    { name:"Яблочный уксус", ing:["яблоко","сахар","вода"], time:"6 недель", complexity:"Средне",
+      desc:"Яблоки с водой 1:2, + сахар 100 г/л. Брожение 4–6 недель. Процедить, хранить в холоде." },
+    { name:"Варенье из малины", ing:["малина","сахар"], time:"1 ч", complexity:"Легко",
+      desc:"Малина 1 кг + сахар 1 кг. Довести до кипения, варить 5 мин 2 раза с перерывом. В банки." },
+    { name:"Малиновый ликёр", ing:["малина","сахар","водка"], time:"3 недели", complexity:"Средне",
+      desc:"Малина 500 г + сахар 300 г + водка 500 мл. Настоять 3 недели, процедить." },
+    { name:"Смородина протёртая с сахаром", ing:["смородина","сахар"], time:"40 мин", complexity:"Легко",
+      desc:"Смородина 1 кг + сахар 2 кг. Прокрутить, перемешать. Сырое варенье хранится 6–12 мес в холоде." },
+    { name:"Желе из смородины", ing:["смородина","сахар"], time:"1 ч", complexity:"Средне",
+      desc:"Сок смородины 1 л + сахар 1,2 кг. Уварить до желирования. Горячим в банки." },
+    { name:"Огурцы солёные (холодный способ)", ing:["огурец","соль","укроп","чеснок","хрен"], time:"5 дней", complexity:"Легко",
+      desc:"Рассол 2 ст.л. соли на 1 л. Листья хрена, смородины, укроп, чеснок. 3–5 дней при +20°C, потом в холод." },
+    { name:"Огурцы маринованные (горячий способ)", ing:["огурец","соль","сахар","уксус","специи"], time:"2 ч", complexity:"Средне",
+      desc:"Рассол 1 ст.л. соли + 1 ст.л. сахара + 1 ч.л. уксуса / 1 л. Залить кипятком 2 раза, 3-й с уксусом. Закатать." },
+    { name:"Салат из огурцов на зиму", ing:["огурец","лук","масло","уксус","сахар","соль"], time:"30 мин", complexity:"Легко",
+      desc:"Огурцы 2 кг + лук 0,5 кг + масло 100 мл + уксус 9% 100 мл + сахар 100 г + соль 40 г. Мариновать 4 ч, закатать." },
+    { name:"Томаты в собственном соку", ing:["томат"], time:"2 ч", complexity:"Средне",
+      desc:"Часть томатов — сок через соковыжималку. Остальные бланшировать, снять кожуру, залить кипящим соком с солью. Стерилизовать 15 мин." },
+    { name:"Кетчуп домашний", ing:["томат","лук","сахар","соль","уксус"], time:"2 ч", complexity:"Средне",
+      desc:"Томаты 3 кг, лук 0,5 кг, сахар 150 г, соль 25 г, уксус 50 мл, специи. Варить 1,5 ч, протереть, варить ещё 30 мин." },
+    { name:"Аджика", ing:["томат","перец","чеснок","хрен","уксус"], time:"40 мин", complexity:"Средне",
+      desc:"Помидоры 2 кг, перец болг. 1 кг, острый 200 г, чеснок 200 г, хрен 100 г, соль 3 ст.л., сахар 3 ст.л., уксус 100 мл. Прокрутить, варить 15 мин." },
+    { name:"Лечо", ing:["томат","перец","морковь","лук"], time:"1 ч", complexity:"Средне",
+      desc:"Помидоры 3 кг, перец 2 кг, морковь 1 кг, лук 0,5 кг, сахар 200 г, соль 60 г, масло 200 мл, уксус 100 мл. Варить 40 мин." },
+    { name:"Икра кабачковая", ing:["кабачок","лук","морковь","томатная паста"], time:"1,5 ч", complexity:"Средне",
+      desc:"Кабачки 3 кг, лук 0,5 кг, морковь 0,5 кг, паста 300 г, масло 200 мл, сахар 2 ст.л., соль 2 ст.л., уксус 50 мл, чеснок 3 зуб. Тушить 1 ч, измельчить." },
+    { name:"Свёкла маринованная", ing:["свекла","уксус","сахар","соль"], time:"1,5 ч", complexity:"Легко",
+      desc:"Свёкла 2 кг отварить, порезать. Рассол: вода 1 л, уксус 100 мл, сахар 50 г, соль 20 г. Залить, стерилизовать 15 мин." },
+    { name:"Капуста квашеная", ing:["капуста","морковь","соль"], time:"5 дней", complexity:"Легко",
+      desc:"Капуста 2 кг + морковь 200 г + соль 40 г. Мять до сока. В бочку, гнёт, 3–5 дней, потом в холод." },
+    { name:"Капуста маринованная (быстрая)", ing:["капуста","уксус","сахар","соль"], time:"2 дня", complexity:"Легко",
+      desc:"1 кг капусты + 1 л воды + 1 ст.л. соли + 3 ст.л. сахара + 100 мл уксуса. Залить кипятком. 2 дня готово." },
+    { name:"Вино из яблок", ing:["яблоко","сахар","дрожжи"], time:"3 мес", complexity:"Сложно",
+      desc:"Сок 6 л + сахар 1,5 кг + винные дрожжи. Брожение 7–14 дней. Снять с осадка 2–3 раза. Выдержка 3 мес." },
+    { name:"Сидр", ing:["яблоко","сахар"], time:"1 мес", complexity:"Средне",
+      desc:"Яблочный сок + сахар 100 г/л. Брожение под гидрозатвором 3–4 недели. Разлить, карбонизация 1–2 недели." },
+    { name:"Квас из берёзового сока", ing:["берёзовый сок","сахар","дрожжи"], time:"3 дня", complexity:"Легко",
+      desc:"Сок 3 л + сахар 100 г + дрожжи 5 г + изюм. 3 дня в тепле. Охладить." },
+    { name:"Творог из молока", ing:["молоко","сметана"], time:"12 ч", complexity:"Легко",
+      desc:"Молоко 3 л + 3 ст.л. сметаны. 12 ч в тепле. Свернулось — на марлю, отжать." },
+    { name:"Домашний сыр (качотта)", ing:["молоко","сычуг","соль"], time:"2 дня", complexity:"Сложно",
+      desc:"Молоко 10 л + закваска + сычуг. Свернуть, резать, нагреть до 40°C. Форма, пресс, солить 12 ч в рассоле." },
+    { name:"Брынза", ing:["молоко","сычуг","соль"], time:"2 дня", complexity:"Средне",
+      desc:"Молоко 5 л + закваска + сычуг. Свернуть 1 ч. В марлю на 12 ч. Солить в рассоле 20% 2–3 дня." },
+    { name:"Масло сливочное", ing:["сливки"], time:"30 мин", complexity:"Средне",
+      desc:"Сливки 33% 1 л — взбивать 10–15 мин. Отделить пахту, промыть холодной водой, посолить." },
+    { name:"Домашняя сгущёнка", ing:["молоко","сахар"], time:"2 ч", complexity:"Средне",
+      desc:"Молоко 1 л + сахар 300 г + сода на кончике. Варить на медленном 2 ч, помешивая." },
+    { name:"Мёд с орехами", ing:["мёд","орех"], time:"10 мин", complexity:"Легко",
+      desc:"Мёд 500 г + орехи 200 г. Перемешать, в стекло. Питательно, для иммунитета." },
+    { name:"Травяной чай из своих трав", ing:["мята","чабрец","душица","липа"], time:"10 мин", complexity:"Легко",
+      desc:"Смешать травы по вкусу. 1 ст.л. на стакан кипятка, 10 мин в термосе." },
+    { name:"Прополис настойка", ing:["прополис","спирт"], time:"2 недели", complexity:"Средне",
+      desc:"Прополис 10 г + спирт 70% 100 мл. 2 недели в темноте, взбалтывать. 20 капель при простуде." },
+    { name:"Свечи из воска", ing:["воск","фитиль"], time:"1 ч", complexity:"Средне",
+      desc:"Воск растопить на водяной бане. Фитиль пропитать. Форма силикон. Заливать 2 раза (усадка)." },
+    { name:"Мыло из обмылков", ing:["обмылки","молоко","масло"], time:"1 ч", complexity:"Легко",
+      desc:"Обмылки + горячее молоко + масло. Расплавить, перемешать. В форму. Безопасно, без щёлочи." },
+    { name:"Крем для обуви", ing:["воск","масло","скипидар"], time:"30 мин", complexity:"Средне",
+      desc:"Воск 30 г + касторовое масло 30 мл + скипидар 10 мл. Растопить, смешать. Натирать кожу." },
+    { name:"Мастика для мебели", ing:["воск","скипидар","канифоль"], time:"40 мин", complexity:"Средне",
+      desc:"Воск 100 г + скипидар 100 мл + канифоль 20 г. Растопить, смешать. Натирать дерево." },
+    { name:"Мазь с травами (зверобой)", ing:["воск","масло","зверобой"], time:"2 недели", complexity:"Средне",
+      desc:"Масло с зверобоем настоять 2 недели. Растопить с воском 4:1. Для ран и ожогов." },
+    { name:"Сушёные грибы в масле", ing:["грибы","масло","чеснок"], time:"1 ч", complexity:"Средне",
+      desc:"Сушёные грибы размочить, обжарить с чесноком, залить маслом. Хранить в холоде 1 мес." },
+    { name:"Маринованные грибы", ing:["грибы","уксус","соль","сахар","специи"], time:"1 ч", complexity:"Средне",
+      desc:"Грибы отварить 20 мин. Маринад: вода 1 л + соль 2 ст.л. + сахар 1 ст.л. + уксус 100 мл + специи. Залить, закатать." },
+    { name:"Копчёное сало", ing:["сало","соль","чеснок"], time:"4 ч", complexity:"Средне",
+      desc:"Сало с чесноком и солью, 12 ч в холоде. Холодное копчение 4 ч. Хранится месяц." },
+    { name:"Домашняя тушёнка", ing:["мясо","лук","соль","специи"], time:"3 ч", complexity:"Сложно",
+      desc:"Мясо + лук + соль в банки. Автоклав 110°C 60–90 мин. ⚠ Только в автоклаве — иначе ботулизм!" }
+  ],
+
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    // Собираем ингредиенты из погреба + урожая
+    const stock = Store.get("cellar_stock", []).map(s => (s.name || "").toLowerCase());
+    const harvest = Store.get("garden_harvest", []).map(h => (h.culture || "").toLowerCase());
+    const all = [...stock, ...harvest];
+
+    // Ключевые слова
+    const keywords = {
+      "яблоко": ["яблок", "яблон"],
+      "груша": ["груш"],
+      "малина": ["малин"],
+      "смородина": ["смородин"],
+      "земляника": ["земляник", "клубник"],
+      "вишня": ["вишн"],
+      "слива": ["слив"],
+      "огурец": ["огурц"],
+      "томат": ["помидор", "томат"],
+      "капуста": ["капуст"],
+      "морковь": ["морков"],
+      "свекла": ["свекл", "свёкл"],
+      "кабачок": ["кабачк"],
+      "перец": ["перец"],
+      "чеснок": ["чеснок"],
+      "лук": ["лук"],
+      "картофель": ["картоф", "картошк"],
+      "грибы": ["гриб", "белый", "лисичк", "опёнк", "опенок"],
+      "молоко": ["молок"],
+      "сливки": ["сливк"],
+      "яйцо": ["яйц"],
+      "мёд": ["мёд", "мед"],
+      "прополис": ["прополис"],
+      "воск": ["воск"],
+      "мясо": ["мяс"],
+      "сало": ["сал"],
+      "орех": ["орех"],
+      "берёзовый сок": ["берёзов", "березов"]
+    };
+
+    const available = new Set();
+    Object.keys(keywords).forEach(key => {
+      const patterns = keywords[key];
+      const found = all.some(item => patterns.some(p => item.includes(p)));
+      if (found) available.add(key);
+    });
+
+    // Подбор рецептов
+    const matched = this.recipes.filter(r =>
+      r.ing.some(ing => available.has(ing))
+    ).map(r => {
+      const score = r.ing.filter(i => available.has(i)).length / r.ing.length;
+      return { ...r, score };
+    }).sort((a, b) => b.score - a.score);
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">📚 Кулинарная книга из своих запасов</div>
+        <p class="text-sm">На основе того, что есть в погребе и собрано с огорода.</p>
+        <div class="row between mt-12">
+          <div>
+            <div style="font-size:22px;font-weight:800">${available.size}</div>
+            <div class="text-muted text-xs">ингредиентов в наличии</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--green-700)">${matched.length}</div>
+            <div class="text-muted text-xs">доступных рецептов</div>
+          </div>
+        </div>
+      </div>
+
+      ${available.size ? `
+        <div class="card">
+          <div class="card-title">📦 Что у тебя есть</div>
+          <div class="row wrap">
+            ${Array.from(available).map(i => `<span class="chip active">${Utils.escape(i)}</span>`).join("")}
+          </div>
+        </div>
+      ` : `
+        <div class="card warn">
+          <div class="card-title">⚠ Заполни погреб</div>
+          <p class="text-sm">Добавь запасы в разделе «Погреб» или урожай в «Огород» — тогда рецепты подберутся автоматически.</p>
+        </div>
+      `}
+
+      <div class="card">
+        <div class="card-title">🍲 Рецепты из твоих продуктов</div>
+        ${matched.length ? matched.map(r => `
+          <div class="accordion">
+            <div class="accordion-head">
+              🍲 ${Utils.escape(r.name)}
+              <span class="badge ${r.score === 1 ? 'badge-green' : r.score >= 0.5 ? 'badge-honey' : 'badge-info'}" style="margin-left:auto">${r.ing.filter(i => available.has(i)).length}/${r.ing.length}</span>
+              <span class="arrow">▶</span>
+            </div>
+            <div class="accordion-body">
+              <p>${Utils.escape(r.desc)}</p>
+              <p class="text-xs text-muted mt-8">⏱ ${r.time} · Сложность: ${r.complexity}</p>
+              <p class="text-xs text-muted">Нужно: ${r.ing.map(i => available.has(i) ? `<b style="color:var(--green-700)">${i}</b>` : i).join(", ")}</p>
+            </div>
+          </div>
+        `).join("") : `<div class="empty"><span class="emoji">📚</span><p>Добавь продукты — появятся рецепты</p></div>`}
+      </div>
+
+      <div class="card info">
+        <div class="card-title">💡 Всего рецептов в книге: ${this.recipes.length}</div>
+        <p class="text-sm">От простых (варенье) до сложных (сыр, колбаса, вино).</p>
+      </div>
+    `;
+    bindAccordions(wrap);
+  }
+};
+
+window.CookBook = CookBook;
+
+/* =========================================================
+   3. ПОГОДНАЯ СТАНЦИЯ — СВОИ ЗАМЕРЫ
+   ========================================================= */
+const WeatherStation = {
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const entries = Store.get("weather_station", []);
+    const today = Utils.todayISO();
+    const todayEntry = entries.find(e => e.date === today);
+
+    // Данные прогноза
+    const cache = Store.get("weather_cache", null);
+    const forecast = cache?.data?.current;
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">🌡 Погодная станция</div>
+        <p class="text-sm">Замеряй своими приборами и сравнивай с прогнозом. Видно микроклимат участка.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Замер на сегодня</div>
+        <div class="row">
+          <div class="field grow"><label>Температура °C</label>
+            <input type="number" id="ws-temp" value="${todayEntry?.temp ?? ""}" step="0.1">
+          </div>
+          <div class="field grow"><label>Влажность %</label>
+            <input type="number" id="ws-hum" value="${todayEntry?.hum ?? ""}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field grow"><label>Давление мм рт. ст.</label>
+            <input type="number" id="ws-press" value="${todayEntry?.press ?? ""}">
+          </div>
+          <div class="field grow"><label>Осадки</label>
+            <select id="ws-rain">
+              <option value="Нет" ${todayEntry?.rain === "Нет" ? "selected" : ""}>Нет</option>
+              <option value="Слабые" ${todayEntry?.rain === "Слабые" ? "selected" : ""}>Слабые</option>
+              <option value="Средние" ${todayEntry?.rain === "Средние" ? "selected" : ""}>Средние</option>
+              <option value="Сильные" ${todayEntry?.rain === "Сильные" ? "selected" : ""}>Сильные</option>
+              <option value="Снег" ${todayEntry?.rain === "Снег" ? "selected" : ""}>Снег</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Заметка</label>
+          <textarea id="ws-note" placeholder="Например: ветер северный, туман утром">${Utils.escape(todayEntry?.note || "")}</textarea>
+        </div>
+        <button class="btn btn-primary btn-block" id="ws-save">Сохранить замер</button>
+      </div>
+
+      ${forecast ? `
+        <div class="card info">
+          <div class="card-title">🛰 Прогноз (Open-Meteo)</div>
+          <div class="row between">
+            <div>
+              <div style="font-size:24px;font-weight:700">${Math.round(forecast.temp)}°C</div>
+              <div class="text-muted text-sm">${Utils.escape(forecast.desc)}</div>
+              <div class="text-xs mt-4">💨 ${forecast.wind} м/с · 💧 ${forecast.humidity}%</div>
+            </div>
+            <div style="font-size:44px">${forecast.icon}</div>
+          </div>
+          ${todayEntry?.temp ? `
+            <div class="divider"></div>
+            <div class="text-sm"><b>Разница с прогнозом:</b>
+              <span style="color:${Math.abs(forecast.temp - todayEntry.temp) > 3 ? 'var(--danger)' : 'var(--green-700)'}">
+                ${(todayEntry.temp - forecast.temp).toFixed(1)}°C
+              </span>
+            </div>
+            <div class="text-xs text-muted">Это микроклимат твоего участка</div>
+          ` : ""}
+        </div>
+      ` : ""}
+
+      ${entries.length >= 2 ? `
+        <div class="card">
+          <div class="card-title">📊 Динамика температуры</div>
+          <div id="ws-chart"></div>
+        </div>
+      ` : ""}
+
+      <div id="ws-list"></div>
+    `;
+
+    document.getElementById("ws-save").addEventListener("click", () => {
+      const temp = +document.getElementById("ws-temp").value;
+      const hum = +document.getElementById("ws-hum").value;
+      const press = +document.getElementById("ws-press").value;
+      if (!temp) { Toast.show("Введи температуру", "danger"); return; }
+      const list = Store.get("weather_station", []);
+      const idx = list.findIndex(e => e.date === today);
+      const entry = {
+        id: idx >= 0 ? list[idx].id : Utils.uid(),
+        date: today, temp, hum, press,
+        rain: document.getElementById("ws-rain").value,
+        note: document.getElementById("ws-note").value.trim()
+      };
+      if (idx >= 0) list[idx] = entry;
+      else list.push(entry);
+      Store.set("weather_station", list);
+      Toast.show("Замер сохранён", "success");
+      this.render(containerId);
+    });
+
+    // График
+    const chartEl = document.getElementById("ws-chart");
+    if (chartEl && entries.length >= 2) {
+      const sorted = entries.slice().sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
+      chartEl.innerHTML = Charts.line(
+        sorted.map(e => ({ label: e.date.slice(5), value: e.temp })),
+        { color: "var(--honey)" }
+      );
+    }
+
+    ListEngine.mount("ws-list", {
+      storeKey: "weather_station",
+      title: "Все замеры",
+      icon: "🌡",
+      fields: [
+        { key:"date", label:"Дата", type:"date" },
+        { key:"temp", label:"Температура °C", type:"number", required:true },
+        { key:"hum", label:"Влажность %", type:"number" },
+        { key:"press", label:"Давление мм", type:"number" },
+        { key:"rain", label:"Осадки", type:"select", options:["Нет","Слабые","Средние","Сильные","Снег"] },
+        { key:"note", label:"Заметка", type:"textarea" }
+      ],
+      renderItem: (it) => ({
+        title: `${it.temp}°C · ${it.hum || "?"}% · ${it.press || "?"} мм`,
+        sub: `${Utils.fmtDate(it.date)}${it.rain !== "Нет" ? " · " + it.rain : ""}${it.note ? " · " + it.note : ""}`,
+        icon: "🌡"
+      }),
+      sort: (a, b) => (b.date || "").localeCompare(a.date || "")
+    });
+  }
+};
+
+window.WeatherStation = WeatherStation;
+
+/* =========================================================
+   4. ДЕРЕВО РОДОСЛОВНЫХ (МАТКИ / ЖИВОТНЫЕ)
+   ========================================================= */
+const FamilyTree = {
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const nodes = Store.get("family_tree", []);
+    const queens = nodes.filter(n => n.species === "Пчеломатка");
+    const animals = nodes.filter(n => n.species !== "Пчеломатка");
+
+    // Проверка инбридинга
+    const warnings = [];
+    nodes.forEach(n => {
+      if (n.father && n.mother && n.father === n.mother) {
+        warnings.push(`${n.name}: отец и мать совпадают — инбридинг!`);
+      }
+      if (n.father && n.mother) {
+        const f = nodes.find(x => x.name === n.father);
+        const m = nodes.find(x => x.name === n.mother);
+        if (f && m && f.father && m.father && f.father === m.father) {
+          warnings.push(`${n.name}: общий дед по отцу и матери — близкородственное скрещивание`);
+        }
+      }
+    });
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">🌳 Дерево родословных</div>
+        <p class="text-sm">Для пчеломаток и животных. Следи за инбридингом и линиями.</p>
+        <div class="row between mt-12">
+          <div>
+            <div style="font-size:22px;font-weight:800">${queens.length}</div>
+            <div class="text-muted text-xs">маток</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800">${animals.length}</div>
+            <div class="text-muted text-xs">животных</div>
+          </div>
+        </div>
+      </div>
+
+      ${warnings.length ? `
+        <div class="card danger">
+          <div class="card-title">⚠ Внимание</div>
+          ${warnings.map(w => `<div class="text-sm">• ${Utils.escape(w)}</div>`).join("")}
+        </div>
+      ` : ""}
+
+      <div id="ft-list"></div>
+
+      ${nodes.length ? `
+        <div class="card info">
+          <div class="card-title">📋 Все особи</div>
+          <div class="list">
+            ${nodes.map(n => {
+              const father = n.father ? nodes.find(x => x.name === n.father) : null;
+              const mother = n.mother ? nodes.find(x => x.name === n.mother) : null;
+              return `
+                <div class="list-item">
+                  <span class="li-icon">${n.species === "Пчеломатка" ? "👑" : "🐾"}</span>
+                  <div class="li-body">
+                    <div class="li-title">${Utils.escape(n.name)} · ${Utils.escape(n.species || "")}</div>
+                    <div class="li-sub">
+                      ${n.breed ? n.breed : ""}${n.year ? " · " + n.year : ""}
+                      ${father ? " · Отец: " + father.name : ""}
+                      ${mother ? " · Мать: " + mother.name : ""}
+                    </div>
+                  </div>
+                  <div class="li-actions">
+                    <button class="li-btn" data-ft-del="${n.id}">🗑</button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      ` : ""}
+    `;
+
+    ListEngine.mount("ft-list", {
+      storeKey: "family_tree",
+      title: "Добавить особь",
+      icon: "🌳",
+      fields: [
+        { key:"name", label:"Имя / кличка", type:"text", required:true, placeholder:"Бурёнка / Матка №5" },
+        { key:"species", label:"Вид", type:"select",
+          options:["Пчеломатка","Корова","Коза","Овца","Свинья","Курица","Собака","Кошка","Лошадь","Другое"] },
+        { key:"breed", label:"Порода", type:"text" },
+        { key:"gender", label:"Пол", type:"select", options:["М","Ж"] },
+        { key:"year", label:"Год рождения", type:"number" },
+        { key:"father", label:"Отец (имя)", type:"text" },
+        { key:"mother", label:"Мать (имя)", type:"text" },
+        { key:"note", label:"Заметка", type:"textarea" }
+      ],
+      renderItem: (it) => ({
+        title: `${it.name} · ${it.species || ""}`,
+        sub: `${it.breed || ""}${it.year ? " · " + it.year : ""}`,
+        icon: it.species === "Пчеломатка" ? "👑" : "🐾"
+      }),
+      onChange: () => this.render(containerId)
+    });
+
+    // Удаление
+    wrap.querySelectorAll("[data-ft-del]").forEach(b => {
+      b.addEventListener("click", () => {
+        if (!confirm("Удалить?")) return;
+        Store.set("family_tree", Store.get("family_tree", []).filter(x => x.id !== b.dataset.ftDel));
+        this.render(containerId);
+      });
+    });
+  }
+};
+
+window.FamilyTree = FamilyTree;
+
+/* =========================================================
+   5. КООПЕРАЦИЯ — ОБМЕН С СОСЕДЯМИ
+   ========================================================= */
+const Cooperation = {
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    const offers = Store.get("coop_offers", []); // мои предложения
+    const needs = Store.get("coop_needs", []);   // что мне нужно
+    const contacts = Store.get("coop_contacts", []);
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">🤝 Кооперация и обмен</div>
+        <p class="text-sm">Веди список того, что можешь предложить соседям и что тебе нужно. Экспорт в QR — передать соседу в один клик.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📤 Поделиться списком</div>
+        <p class="text-sm mb-8">Сделай QR — сосед отсканирует и увидит, что у тебя есть.</p>
+        <button class="btn btn-primary btn-block" id="coop-qr">📱 Сгенерировать QR моих излишков</button>
+        <button class="btn btn-secondary btn-block mt-8" id="coop-share">📤 Поделиться текстом</button>
+      </div>
+
+      <div id="coop-offers"></div>
+      <div id="coop-needs" class="mt-12"></div>
+      <div id="coop-contacts" class="mt-12"></div>
+    `;
+
+    document.getElementById("coop-qr").addEventListener("click", () => {
+      const text = "Мои излишки (ДВОР):\n" + offers.map(o => `• ${o.what} — ${o.qty}${o.price ? " (" + o.price + " ₽)" : ""}`).join("\n") +
+                   "\n\nМне нужно:\n" + needs.map(n => `• ${n.what} — ${n.qty}`).join("\n") +
+                   "\n\nСвязь: " + (Store.get("my_coords", "без координат"));
+      QR.show("Кооперация", "list", { text });
+    });
+
+    document.getElementById("coop-share").addEventListener("click", () => {
+      const text = "Мои излишки:\n" + offers.map(o => `• ${o.what} — ${o.qty}`).join("\n");
+      if (navigator.share) {
+        navigator.share({ title: "Мои излишки", text });
+      } else {
+        navigator.clipboard.writeText(text).then(() => Toast.show("Скопировано в буфер", "success"));
+      }
+    });
+
+    ListEngine.mount("coop-offers", {
+      storeKey: "coop_offers",
+      title: "📤 Что могу предложить",
+      icon: "📤",
+      fields: [
+        { key:"what", label:"Что", type:"text", required:true, placeholder:"Мёд липовый" },
+        { key:"qty", label:"Сколько", type:"text", placeholder:"10 л" },
+        { key:"price", label:"Цена ₽ (или оставь 0 для обмена)", type:"number" },
+        { key:"available", label:"Когда доступно", type:"text", placeholder:"С сентября" }
+      ],
+      renderItem: (it) => ({
+        title: `${it.what} — ${it.qty || ""}`,
+        sub: `${it.price ? Utils.formatNumber(it.price) + " ₽" : "обмен"}${it.available ? " · " + it.available : ""}`,
+        icon: "📤"
+      })
+    });
+
+    ListEngine.mount("coop-needs", {
+      storeKey: "coop_needs",
+      title: "📥 Что мне нужно",
+      icon: "📥",
+      fields: [
+        { key:"what", label:"Что", type:"text", required:true, placeholder:"Сено" },
+        { key:"qty", label:"Сколько", type:"text", placeholder:"20 тюков" },
+        { key:"can_offer", label:"Что могу дать взамен", type:"text", placeholder:"Мёд, яйца" }
+      ],
+      renderItem: (it) => ({
+        title: `${it.what} — ${it.qty || ""}`,
+        sub: it.can_offer ? "Взамен: " + it.can_offer : "",
+        icon: "📥"
+      })
+    });
+
+    ListEngine.mount("coop-contacts", {
+      storeKey: "coop_contacts",
+      title: "👥 Соседи и партнёры",
+      icon: "👥",
+      fields: [
+        { key:"name", label:"Имя", type:"text", required:true },
+        { key:"phone", label:"Телефон", type:"text" },
+        { key:"what", label:"Что у него есть", type:"text", placeholder:"Молоко, трактор" },
+        { key:"needs", label:"Что ему нужно", type:"text", placeholder:"Мёд, дрова" },
+        { key:"note", label:"Заметка", type:"textarea" }
+      ],
+      renderItem: (it) => ({
+        title: it.name,
+        sub: `${it.what || ""}${it.needs ? " · нужно: " + it.needs : ""}`,
+        icon: "👥"
+      }),
+      onClickItem: (it) => {
+        if (it.phone) window.location.href = "tel:" + it.phone.replace(/[^+\d]/g, "");
+      }
+    });
+  }
+};
+
+window.Cooperation = Cooperation;
+
+/* =========================================================
+   6. МИНИ-СОЦСЕТЬ РАЙОНА (локальная доска)
+   ========================================================= */
+const LocalBoard = {
+  render(containerId) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+      <div class="card success">
+        <div class="card-title">📢 Доска района</div>
+        <p class="text-sm">Объявления, события и объявления соседей. Всё хранится только у тебя — это твоя личная база.</p>
+        <button class="btn btn-primary btn-block mt-8" id="lb-export">📤 Экспорт доски</button>
+      </div>
+      <div id="lb-list"></div>
+    `;
+
+    document.getElementById("lb-export").addEventListener("click", () => {
+      const posts = Store.get("local_board", []);
+      if (!posts.length) { Toast.show("Пусто", "danger"); return; }
+      const text = "Доска района:\n\n" + posts.map(p => `[${p.category || ""}] ${p.title}\n${p.text || ""}\n${p.author ? "— " + p.author : ""}\n`).join("\n");
+      if (navigator.share) navigator.share({ title: "Доска района", text });
+      else navigator.clipboard.writeText(text).then(() => Toast.show("Скопировано", "success"));
+    });
+
+    ListEngine.mount("lb-list", {
+      storeKey: "local_board",
+      title: "Объявления",
+      icon: "📢",
+      fields: [
+        { key:"title", label:"Заголовок", type:"text", required:true, placeholder:"Продам мёд" },
+        { key:"category", label:"Категория", type:"select",
+          options:["Продам","Куплю","Обменяю","Отдам","Помощь","Событие","Информация"] },
+        { key:"text", label:"Текст", type:"textarea", placeholder:"Подробности" },
+        { key:"author", label:"От кого", type:"text" },
+        { key:"phone", label:"Телефон", type:"text" },
+        { key:"date", label:"Дата", type:"date" }
+      ],
+      renderItem: (it) => ({
+        title: it.title,
+        sub: `${it.category || ""}${it.author ? " · " + it.author : ""}${it.date ? " · " + Utils.fmtDate(it.date) : ""}`,
+        icon: "📢"
+      }),
+      onClickItem: (it) => {
+        Modal.open(it.title, `
+          <p class="text-sm">${Utils.escape(it.text || "")}</p>
+          ${it.phone ? `<a href="tel:${it.phone}" class="btn btn-primary btn-block mt-12">📞 Позвонить: ${Utils.escape(it.phone)}</a>` : ""}
+          ${it.author ? `<p class="text-xs text-muted mt-8">От: ${Utils.escape(it.author)}</p>` : ""}
+        `);
+      },
+      sort: (a, b) => (b.date || "").localeCompare(a.date || "")
+    });
+  }
+};
+
+window.LocalBoard = LocalBoard;
+
+/* =========================================================
+   7. РЕГИСТРАЦИЯ ЭКРАНОВ + МЕНЮ
+   ========================================================= */
+(function addNewScreens() {
+  const screensToAdd = [
+    { id:"screen-time",     title:"⏱ Учёт времени",   subtitle:"Сколько часов уходит на хозяйство",        contentId:"time-content" },
+    { id:"screen-cook",     title:"📚 Кулинарная книга", subtitle:"Рецепты из своих запасов",               contentId:"cook-content" },
+    { id:"screen-station",  title:"🌡 Погодная станция", subtitle:"Свои замеры и микроклимат участка",     contentId:"station-content" },
+    { id:"screen-tree",     title:"🌳 Родословные",     subtitle:"Матки и животные, контроль инбридинга", contentId:"tree-content" },
+    { id:"screen-coop",     title:"🤝 Кооперация",      subtitle:"Обмен и продажа с соседями",             contentId:"coop-content" },
+    { id:"screen-board",    title:"📢 Доска района",    subtitle:"Объявления и события",                   contentId:"board-content" }
+  ];
+
+  screensToAdd.forEach(s => {
+    if (document.getElementById(s.id)) return;
+    const div = document.createElement("section");
+    div.className = "screen";
+    div.id = s.id;
+    div.innerHTML = `
+      <h1 class="screen-title">${s.title}</h1>
+      <p class="screen-subtitle">${s.subtitle}</p>
+      <div id="${s.contentId}"></div>
+    `;
+    document.querySelector(".app-main").appendChild(div);
+  });
+
+  window.ScreenHooks = window.ScreenHooks || {};
+  ScreenHooks.time    = () => TimeTracker.render("time-content");
+  ScreenHooks.cook    = () => CookBook.render("cook-content");
+  ScreenHooks.station = () => WeatherStation.render("station-content");
+  ScreenHooks.tree    = () => FamilyTree.render("tree-content");
+  ScreenHooks.coop    = () => Cooperation.render("coop-content");
+  ScreenHooks.board   = () => LocalBoard.render("board-content");
+})();
+
+// Расширяем главное меню
+if (window.HomeMenu && HomeMenu.items) {
+  const extra = [
+    { screen:"time",    icon:"⏱", label:"Учёт времени",    desc:"Себестоимость с часами", new:true },
+    { screen:"cook",    icon:"📚", label:"Кулинарная книга",desc:"Рецепты из твоих запасов", new:true, highlight:true },
+    { screen:"station", icon:"🌡", label:"Погодная станция",desc:"Свои замеры",              new:true },
+    { screen:"tree",    icon:"🌳", label:"Родословные",     desc:"Матки и животные",          new:true },
+    { screen:"coop",    icon:"🤝", label:"Кооперация",      desc:"Обмен с соседями",          new:true },
+    { screen:"board",   icon:"📢", label:"Доска района",    desc:"Объявления",                new:true }
+  ];
+  // Не дублируем, если уже есть
+  extra.forEach(e => {
+    if (!HomeMenu.items.some(i => i.screen === e.screen)) {
+      HomeMenu.items.push(e);
+    }
+  });
+
+  // Перерисовываем меню на главной при каждом рендере
+  if (window.Home && Home.render) {
+    const origHome4 = Home.render.bind(Home);
+    Home.render = function() {
+      if (window.HomeMenu && HomeMenu.render) HomeMenu.render();
+      origHome4();
+    };
+  }
+}
+
+/* =========================================================
+   8. КОМАНДЫ В КОНСОЛЬ
+   ========================================================= */
+window.DVOR = window.DVOR || {};
+window.DVOR.time = TimeTracker;
+window.DVOR.cook = CookBook;
+window.DVOR.station = WeatherStation;
+window.DVOR.tree = FamilyTree;
+window.DVOR.coop = Cooperation;
+window.DVOR.board = LocalBoard;
+
+/* =========================================================
+   9. ОБНОВЛЕНИЕ HELP
+   ========================================================= */
+if (window.DVOR && DVOR.help) {
+  const origHelp = DVOR.help;
+  DVOR.help = function() {
+    origHelp();
+    console.log(`\n📦 Дополнительно:
+DVOR.time — учёт времени
+DVOR.cook — кулинарная книга
+DVOR.station — погодная станция
+DVOR.tree — родословные
+DVOR.coop — кооперация
+DVOR.board — доска района
+DVOR.qr — QR-код
+DVOR.charts — графики`);
+  };
+}
+
+console.log("⏱ Блок 4 загружен: Время + Кулинария + Станция + Родословные + Кооперация + Доска");
+console.log("🎉 Все 4 блока расширения установлены — ДВОР v3.0 готов");
+</script>
 </body>
 </html>
