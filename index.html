@@ -10377,5 +10377,870 @@ console.log("🎉 ДВОР v4.0 — полностью готов!");
   console.log("✅ Финальный фикс применён");
 })();
 </script>
+<!-- =========================================================
+     ПАТЧ v4.1 — УМНАЯ ГЛАВНАЯ + МЕНЮ + АНАЛИТИКА
+     ========================================================= -->
+
+<script>
+(function patchV41() {
+  console.log("🎯 Патч v4.1 запускается...");
+
+  // ============================================================
+  // 1. СОЗДАЁМ ЭКРАН «МЕНЮ» (для кнопки Ещё)
+  // ============================================================
+  if (!document.getElementById("screen-menu")) {
+    const menuScreen = document.createElement("section");
+    menuScreen.className = "screen";
+    menuScreen.id = "screen-menu";
+    menuScreen.innerHTML = `
+      <h1 class="screen-title">📂 Все разделы</h1>
+      <p class="screen-subtitle">Выбери категорию или найди раздел</p>
+      <div class="field mb-12">
+        <input type="text" id="menu-search" placeholder="🔍 Найти раздел..." style="width:100%;padding:11px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+      </div>
+      <div id="menu-content"></div>
+    `;
+    document.querySelector(".app-main").appendChild(menuScreen);
+  }
+
+  // ============================================================
+  // 2. ПРОВЕРКА АКТИВНОСТИ КАТЕГОРИЙ
+  // ============================================================
+  const Activity = {
+    // Есть ли данные в категории
+    hasGarden()   { return Store.get("garden_beds", []).length > 0 || Store.get("garden_plantings", []).length > 0 || Store.get("garden_seeds", []).length > 0 || Store.get("flowers_planted", []).length > 0; },
+    hasMushrooms(){ return Store.get("mushroom_finds", []).length > 0 || Store.get("mushroom_crops", []).length > 0; },
+    hasBees()     { return Store.get("bee_hives", []).length > 0; },
+    hasLivestock(){ return Store.get("livestock", []).length > 0; },
+    hasPets()     { return Store.get("pets", []).length > 0; },
+    hasBuild()    { return Store.get("build_projects", []).length > 0; },
+    hasFinance()  { return Store.get("economy_tx", []).length > 0 || Store.get("finance_goals", []).length > 0; },
+    hasCellar()   { return Store.get("cellar_stock", []).length > 0; },
+    hasInventory(){ return Store.get("inv_tools", []).length > 0 || Store.get("inv_tech", []).length > 0; },
+    hasMedicine() { return Store.get("med_kit", []).length > 0; },
+    hasFamily()   { return Store.get("family_members", []).length > 0 || Store.get("family_tasks", []).length > 0; },
+    hasMap()      { return Store.get("map_marks", []).length > 0 || Store.get("plot_zones", []).length > 0; },
+    hasCrafts()   { return Store.get("crafts_items", []).length > 0; },
+    hasTime()     { return Store.get("time_entries", []).length > 0; },
+    hasSchool()   { return Object.keys(Store.all()).some(k => k.startsWith("school_progress_") && Store.get(k, []).length > 0); },
+    hasResources(){ return Store.get("res_log", []).length > 0; },
+
+    // Общая активность — пользовался ли вообще
+    anyActivity() {
+      return this.hasGarden() || this.hasBees() || this.hasLivestock() || this.hasPets() ||
+             this.hasBuild() || this.hasFinance() || this.hasCellar() || this.hasInventory() ||
+             this.hasFamily() || this.hasMap() || this.hasMushrooms() || this.hasCrafts() ||
+             this.hasTime() || this.hasSchool() || this.hasResources();
+    }
+  };
+  window.Activity = Activity;
+
+  // ============================================================
+  // 3. УМНЫЕ ПЛИТКИ ХОЗЯЙСТВА
+  // ============================================================
+  const SmartTiles = {
+    // Возможные плитки — показываем только те, где count > 0
+    all() {
+      const tiles = [];
+
+      // Огород
+      const beds = Store.get("garden_beds", []).length;
+      if (beds > 0) tiles.push({ icon:"🌱", label:"Грядок", value:beds, screen:"garden", priority: 10 });
+      const flowers = Store.get("flowers_planted", []).length;
+      if (flowers > 0) tiles.push({ icon:"🌸", label:"Цветов", value:flowers, screen:"garden", priority: 9 });
+      const seeds = Store.get("garden_seeds", []).length;
+      if (seeds > 0) tiles.push({ icon:"🌰", label:"Семян", value:seeds, screen:"garden", priority: 7 });
+      const harvest = Store.get("garden_harvest", []);
+      if (harvest.length > 0) {
+        const total = harvest.reduce((s, h) => s + (parseFloat(h.qty) || 0), 0);
+        tiles.push({ icon:"🧺", label:"Урожая, кг", value: Math.round(total), screen:"garden", priority: 11 });
+      }
+
+      // Грибы
+      const mush = Store.get("mushroom_finds", []).length;
+      if (mush > 0) tiles.push({ icon:"🍄", label:"Находок", value:mush, screen:"mushrooms", priority: 5 });
+      const mushBlocks = Store.get("mushroom_crops", []).length;
+      if (mushBlocks > 0) tiles.push({ icon:"🧱", label:"Блоков", value:mushBlocks, screen:"mushrooms", priority: 5 });
+
+      // Пасека
+      const hives = Store.get("bee_hives", []).length;
+      if (hives > 0) tiles.push({ icon:"🐝", label:"Ульев", value:hives, screen:"bees", priority: 15 });
+      const honey = Store.get("bee_honey", []).reduce((s, x) => s + (+x.kg || 0), 0);
+      if (honey > 0) tiles.push({ icon:"🍯", label:"Мёда, кг", value: Math.round(honey), screen:"bees", priority: 16 });
+
+      // Живность
+      const animals = Store.get("livestock", []).reduce((s, a) => s + (+a.count || 0), 0);
+      if (animals > 0) tiles.push({ icon:"🐔", label:"Животных", value:animals, screen:"livestock", priority: 14 });
+      const eggs = Store.get("livestock_eggs_tracker", {})[Utils.todayISO()] || 0;
+      if (eggs > 0) tiles.push({ icon:"🥚", label:"Яиц сегодня", value:eggs, screen:"livestock", priority: 15 });
+      const milk = Store.get("livestock_milk_tracker", {})[Utils.todayISO()] || 0;
+      if (milk > 0) tiles.push({ icon:"🥛", label:"Молока, л", value:milk, screen:"livestock", priority: 15 });
+
+      // Питомцы
+      const pets = Store.get("pets", []).length;
+      if (pets > 0) tiles.push({ icon:"🐕", label:"Питомцев", value:pets, screen:"pets", priority: 8 });
+
+      // Стройка
+      const projects = Store.get("build_projects", []).length;
+      if (projects > 0) tiles.push({ icon:"🏠", label:"Объектов", value:projects, screen:"build", priority: 10 });
+
+      // Погреб
+      const stock = Store.get("cellar_stock", []).length;
+      if (stock > 0) tiles.push({ icon:"📦", label:"В погребе", value:stock, screen:"cellar", priority: 11 });
+
+      // Инвентарь
+      const tools = Store.get("inv_tools", []).length + Store.get("inv_tech", []).length;
+      if (tools > 0) tiles.push({ icon:"🧰", label:"Инструмент", value:tools, screen:"inventory", priority: 6 });
+
+      // Аптека
+      const meds = Store.get("med_kit", []).length;
+      if (meds > 0) tiles.push({ icon:"💊", label:"Лекарств", value:meds, screen:"medicine", priority: 5 });
+
+      // Семья
+      const members = Store.get("family_members", []).length;
+      if (members > 0) tiles.push({ icon:"👥", label:"Семья", value:members, screen:"family", priority: 5 });
+      const tasks = Store.get("family_tasks", []).filter(t => !t.done).length;
+      if (tasks > 0) tiles.push({ icon:"✅", label:"Задач", value:tasks, screen:"family", priority: 12 });
+
+      // Грабли
+      const mistakes = Store.get("mistakes", []).length;
+      if (mistakes > 0) tiles.push({ icon:"📖", label:"Ошибок", value:mistakes, screen:"mistakes", priority: 4 });
+
+      // Добыча
+      const res = Store.get("res_log", []).length;
+      if (res > 0) tiles.push({ icon:"⛏", label:"Добычи", value:res, screen:"resources", priority: 5 });
+
+      // Ремесло
+      const crafts = Store.get("crafts_items", []).length;
+      if (crafts > 0) tiles.push({ icon:"🔨", label:"Изделий", value:crafts, screen:"crafts", priority: 5 });
+
+      // Сортируем по приоритету (важные сверху) и режем до 8
+      tiles.sort((a, b) => b.priority - a.priority);
+      return tiles.slice(0, 8);
+    },
+
+    render(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+
+      const tiles = this.all();
+
+      if (!tiles.length) {
+        // Пользователь ещё ничего не вводил
+        el.innerHTML = `
+          <div class="empty" style="padding:24px 16px">
+            <span class="emoji">🌾</span>
+            <p style="margin-bottom:12px">Хозяйство пустое</p>
+            <p class="text-xs text-muted" style="margin-bottom:16px">Начни с одного из разделов — статистика появится автоматически</p>
+            <div class="row wrap" style="justify-content:center">
+              <button class="btn btn-primary btn-sm" onclick="Router.go('garden')">🌱 Огород</button>
+              <button class="btn btn-primary btn-sm" onclick="Router.go('bees')">🐝 Пасека</button>
+              <button class="btn btn-primary btn-sm" onclick="Router.go('livestock')">🐔 Живность</button>
+              <button class="btn btn-secondary btn-sm" onclick="Router.go('finance')">💰 Финансы</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      el.innerHTML = tiles.map(t => `
+        <div class="tile" data-tile-screen="${t.screen}">
+          <div class="tile-icon">${t.icon}</div>
+          <div class="tile-value">${Utils.formatNumber(t.value)}</div>
+          <div class="tile-label">${t.label}</div>
+        </div>
+      `).join("");
+
+      el.querySelectorAll("[data-tile-screen]").forEach(tile => {
+        tile.addEventListener("click", () => Router.go(tile.dataset.tileScreen));
+      });
+    }
+  };
+  window.SmartTiles = SmartTiles;
+
+  // ============================================================
+  // 4. УМНЫЕ БЫСТРЫЕ ДЕЙСТВИЯ
+  // ============================================================
+  const SmartQuick = {
+    all() {
+      const actions = [];
+
+      // Огород
+      if (Activity.hasGarden()) {
+        actions.push({ icon:"💧", label:"Полил", action: () => { Router.go("garden"); setTimeout(() => { document.querySelector('#garden-tabs .chip[data-tab="water"]')?.click(); setTimeout(() => document.querySelector("#garden-water-wrap [data-le-add]")?.click(), 250); }, 250); } });
+        actions.push({ icon:"🧺", label:"Собрал", action: () => { Router.go("garden"); setTimeout(() => { document.querySelector('#garden-tabs .chip[data-tab="harvest"]')?.click(); setTimeout(() => document.querySelector("#garden-hv-wrap [data-le-add]")?.click(), 250); }, 250); } });
+      }
+
+      // Пасека
+      if (Activity.hasBees()) {
+        actions.push({ icon:"🐝", label:"Осмотр", action: () => { Router.go("bees"); setTimeout(() => { document.querySelector('#bees-tabs .chip[data-tab="inspections"]')?.click(); setTimeout(() => document.querySelector("#bees-insp-wrap [data-le-add]")?.click(), 250); }, 250); } });
+        actions.push({ icon:"🍯", label:"Откачка", action: () => { Router.go("bees"); setTimeout(() => { document.querySelector('#bees-tabs .chip[data-tab="honey"]')?.click(); setTimeout(() => document.querySelector("#bees-honey-wrap [data-le-add]")?.click(), 250); }, 250); } });
+      }
+
+      // Живность
+      if (Activity.hasLivestock()) {
+        actions.push({ icon:"🌾", label:"Покормил", action: () => { Router.go("livestock"); setTimeout(() => { document.querySelector('#livestock-tabs .chip[data-tab="feed"]')?.click(); setTimeout(() => document.querySelector("#live-feed-wrap [data-le-add]")?.click(), 250); }, 250); } });
+        actions.push({ icon:"🥚", label:"Собрал яйца", action: () => { Router.go("livestock"); setTimeout(() => { document.querySelector('#livestock-tabs .chip[data-tab="eggs"]')?.click(); }, 250); } });
+      }
+
+      // Финансы
+      if (Activity.hasFinance()) {
+        actions.push({ icon:"💵", label:"Доход", action: () => { Router.go("finance"); setTimeout(() => Finance.openAddTx?.("income"), 300); } });
+        actions.push({ icon:"💸", label:"Расход", action: () => { Router.go("finance"); setTimeout(() => Finance.openAddTx?.("expense"), 300); } });
+      }
+
+      // Семья
+      if (Activity.hasFamily()) {
+        actions.push({ icon:"✅", label:"Задача", action: () => { Router.go("family"); setTimeout(() => { document.querySelector('#family-tabs .chip[data-tab="tasks"]')?.click(); setTimeout(() => document.querySelector("#fam-tasks-wrap [data-le-add]")?.click(), 250); }, 250); } });
+      }
+
+      // Погреб
+      if (Activity.hasCellar()) {
+        actions.push({ icon:"📦", label:"В погреб", action: () => { Router.go("cellar"); setTimeout(() => { document.querySelector('#cellar-tabs .chip[data-tab="stock"]')?.click(); setTimeout(() => document.querySelector("#cellar-stock-wrap [data-le-add]")?.click(), 250); }, 250); } });
+      }
+
+      // Карта
+      if (Activity.hasMap()) {
+        actions.push({ icon:"📍", label:"Метка", action: () => { Router.go("map"); setTimeout(() => { document.querySelector('#map-tabs .chip[data-tab="marks"]')?.click(); }, 250); } });
+      }
+
+      return actions.slice(0, 8);
+    },
+
+    render(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const actions = this.all();
+
+      // Если нет ни одной активной категории — не показываем блок вообще
+      if (!actions.length) {
+        el.style.display = "none";
+        return;
+      }
+      el.style.display = "";
+
+      el.innerHTML = `
+        <div class="card-title">⚡ Быстрые действия</div>
+        <div class="row wrap">
+          ${actions.map((a, i) => `<button class="btn btn-secondary btn-sm" data-qa-idx="${i}">${a.icon} ${a.label}</button>`).join("")}
+        </div>
+      `;
+      el.querySelectorAll("[data-qa-idx]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const a = actions[+btn.dataset.qaIdx];
+          if (a) a.action();
+        });
+      });
+    }
+  };
+  window.SmartQuick = SmartQuick;
+
+  // ============================================================
+  // 5. АНАЛИТИКА — динамика ключевых показателей
+  // ============================================================
+  const Analytics = {
+    // Динамика за последние N дней по трекерам
+    trend(trackerKey, days = 7) {
+      const log = Store.get(trackerKey, {});
+      const now = [];
+      const prev = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        now.push(log[iso] || 0);
+      }
+      for (let i = days; i < days * 2; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        prev.push(log[iso] || 0);
+      }
+      const nowSum = now.reduce((s, x) => s + x, 0);
+      const prevSum = prev.reduce((s, x) => s + x, 0);
+      const diff = nowSum - prevSum;
+      const pct = prevSum > 0 ? Math.round(diff / prevSum * 100) : null;
+      return { nowSum, prevSum, diff, pct };
+    },
+
+    // Строки аналитики — только по реальным данным
+    lines() {
+      const lines = [];
+
+      // Яйца
+      if (Activity.hasLivestock()) {
+        const t = this.trend("livestock_eggs_tracker", 7);
+        if (t.nowSum > 0) {
+          const arrow = t.diff > 0 ? "↑" : t.diff < 0 ? "↓" : "=";
+          const color = t.diff > 0 ? "var(--green-700)" : t.diff < 0 ? "var(--danger)" : "var(--text-muted)";
+          lines.push({
+            icon: "🥚",
+            text: `Яйца за 7 дней: <b>${t.nowSum} шт</b>`,
+            trend: t.pct !== null ? `<span style="color:${color}">${arrow} ${Math.abs(t.pct)}%</span>` : ""
+          });
+        }
+      }
+
+      // Молоко
+      if (Activity.hasLivestock()) {
+        const t = this.trend("livestock_milk_tracker", 7);
+        if (t.nowSum > 0) {
+          const arrow = t.diff > 0 ? "↑" : t.diff < 0 ? "↓" : "=";
+          const color = t.diff > 0 ? "var(--green-700)" : t.diff < 0 ? "var(--danger)" : "var(--text-muted)";
+          lines.push({
+            icon: "🥛",
+            text: `Молоко за 7 дней: <b>${t.nowSum.toFixed(1)} л</b>`,
+            trend: t.pct !== null ? `<span style="color:${color}">${arrow} ${Math.abs(t.pct)}%</span>` : ""
+          });
+        }
+      }
+
+      // Полив огорода
+      if (Activity.hasGarden()) {
+        const t = this.trend("garden_water_tracker", 7);
+        if (t.nowSum > 0) {
+          lines.push({
+            icon: "💧",
+            text: `Поливов за 7 дней: <b>${t.nowSum}</b>`,
+            trend: ""
+          });
+        }
+      }
+
+      // Мёд за месяц
+      if (Activity.hasBees()) {
+        const honey = Store.get("bee_honey", []);
+        const now = new Date();
+        const monthHoney = honey.filter(h => {
+          const d = new Date(h.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }).reduce((s, h) => s + (+h.kg || 0), 0);
+        if (monthHoney > 0) {
+          lines.push({ icon: "🍯", text: `Мёда за месяц: <b>${monthHoney.toFixed(1)} кг</b>`, trend: "" });
+        }
+      }
+
+      // Финансы за месяц
+      if (Activity.hasFinance()) {
+        const tx = Store.get("economy_tx", []);
+        const now = new Date();
+        const monthTx = tx.filter(t => {
+          const d = new Date(t.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        const income = monthTx.filter(t => t.type === "income").reduce((s, t) => s + (+t.amount || 0), 0);
+        const expense = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + (+t.amount || 0), 0);
+        if (income > 0) lines.push({ icon: "💵", text: `Доход за месяц: <b>${Utils.formatNumber(income)} ₽</b>`, trend: "" });
+        if (expense > 0) lines.push({ icon: "💸", text: `Расход за месяц: <b>${Utils.formatNumber(expense)} ₽</b>`, trend: "" });
+        if (income > 0 && expense > 0) {
+          const balance = income - expense;
+          lines.push({
+            icon: "📊",
+            text: `Баланс: <b style="color:${balance >= 0 ? "var(--green-700)" : "var(--danger)"}">${balance >= 0 ? "+" : ""}${Utils.formatNumber(balance)} ₽</b>`,
+            trend: ""
+          });
+        }
+      }
+
+      return lines.slice(0, 5);
+    },
+
+    render(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const lines = this.lines();
+      if (!lines.length) {
+        el.style.display = "none";
+        return;
+      }
+      el.style.display = "";
+      el.innerHTML = `
+        <div class="card-title">📈 Динамика</div>
+        <div class="list">
+          ${lines.map(l => `
+            <div class="list-item" style="padding:8px 0;border:none;background:transparent">
+              <span class="li-icon">${l.icon}</span>
+              <div class="li-body"><div class="li-title" style="font-weight:400;font-size:13px">${l.text}</div></div>
+              ${l.trend ? `<span class="text-sm">${l.trend}</span>` : ""}
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+  };
+  window.Analytics = Analytics;
+
+  // ============================================================
+  // 6. ЗАДАЧИ СЕЗОНА
+  // ============================================================
+  const SeasonTasks = {
+    tasks() {
+      const seasons = {
+        spring: ["Проверить инвентарь","Закупить семена","Посеять рассаду","Подготовить теплицу","Перекопать грядки","Внести компост","Посадить ранние культуры","Обработать сад"],
+        summer: ["Поливать через день","Пропалывать","Подкармливать","Обрабатывать от вредителей","Пасынковать томаты","Собирать урожай","Заготавливать варенья"],
+        autumn: ["Убрать урожай","Посеять сидераты","Убрать ботву","Перекопать","Внести удобрения","Заготовить дрова","Утеплить теплицу","Посадить озимые"],
+        winter: ["Проверить семена","Спланировать посадки","Заготовить ящики","Ремонт инвентаря","Собрать золу","Проверить погреб","Ревизия запасов"]
+      };
+      const cur = Utils.seasonFromDate();
+      const key = "cal_season_" + cur;
+      let state = Store.get(key, null);
+      if (!state) {
+        state = seasons[cur].map(text => ({ id: Utils.uid(), text, done: false }));
+        Store.set(key, state);
+      }
+      return { key, state, season: cur };
+    },
+
+    render(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const { key, state, season } = this.tasks();
+      const notDone = state.filter(s => !s.done).slice(0, 5);
+      const names = { spring:"🌸 Весна", summer:"☀ Лето", autumn:"🍂 Осень", winter:"❄ Зима" };
+
+      if (!notDone.length) {
+        el.innerHTML = `
+          <div class="card success">
+            <div class="card-title">✅ Сезонные работы</div>
+            <p class="text-sm">Все задачи на ${names[season].toLowerCase()} выполнены! 🎉</p>
+          </div>
+        `;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="card info">
+          <div class="card-title">📅 ${names[season]} — задачи сезона</div>
+          <div class="list">
+            ${notDone.map(t => `
+              <div class="list-item" data-season-task="${t.id}" style="cursor:pointer;padding:8px 10px">
+                <span class="li-icon">⬜</span>
+                <div class="li-body"><div class="li-title" style="font-weight:500;font-size:13px">${Utils.escape(t.text)}</div></div>
+              </div>
+            `).join("")}
+          </div>
+          <button class="btn btn-secondary btn-sm btn-block mt-8" onclick="Router.go('calendar')">Все задачи сезона</button>
+        </div>
+      `;
+      el.querySelectorAll("[data-season-task]").forEach(item => {
+        item.addEventListener("click", () => {
+          const id = item.dataset.seasonTask;
+          const st = Store.get(key, []);
+          const i = st.findIndex(x => x.id === id);
+          if (i >= 0) {
+            st[i].done = true;
+            Store.set(key, st);
+            Toast.show("Готово!", "success");
+            this.render(containerId);
+            if (window.Tiles) SmartTiles.render("home-tiles");
+          }
+        });
+      });
+    }
+  };
+  window.SeasonTasks = SeasonTasks;
+
+  // ============================================================
+  // 7. ПЕРЕСОЗДАЁМ ГЛАВНУЮ (полная замена Home.render)
+  // ============================================================
+  const NewHome = {
+    render() {
+      // Погода (компактно)
+      this.renderWeather();
+      // Советник — 1–2 совета
+      this.renderAdvice();
+      // Дедлайны
+      this.renderDeadlines();
+      // Задачи сезона
+      SeasonTasks.render("home-season");
+      // Быстрые действия (умные)
+      SmartQuick.render("home-quick");
+      // Плитки (умные)
+      SmartTiles.render("home-tiles");
+      // Аналитика
+      Analytics.render("home-analytics");
+      // Цели
+      this.renderGoals();
+    },
+
+    renderWeather() {
+      const el = document.getElementById("home-weather-body");
+      if (!el) return;
+      const cached = Store.get("weather_cache", null);
+      if (cached && Date.now() - cached.ts < 3600000 && cached.data?.current) {
+        const c = cached.data.current;
+        el.innerHTML = `
+          <div class="row between">
+            <div>
+              <span style="font-size:22px;font-weight:800">${Math.round(c.temp)}°C</span>
+              <span class="text-muted text-sm" style="margin-left:8px">${Utils.escape(cached.data.city)} · ${Utils.escape(c.desc)}</span>
+            </div>
+            <div style="font-size:36px">${c.icon}</div>
+          </div>
+        `;
+        return;
+      }
+      el.innerHTML = `<span class="text-muted text-sm">Погода не загружена</span>
+        <div class="mt-8"><button class="btn btn-primary btn-sm" id="home-load-weather">Загрузить</button></div>`;
+      const btn = document.getElementById("home-load-weather");
+      if (btn) btn.addEventListener("click", () => {
+        if (window.Weather) Weather.fetchAndRender("#home-weather-body");
+      });
+    },
+
+    renderAdvice() {
+      const el = document.getElementById("home-advice");
+      if (!el) return;
+      if (!window.Advisor) { el.style.display = "none"; return; }
+      try {
+        const advice = Advisor.getAll().slice(0, 2);
+        if (!advice.length) { el.style.display = "none"; return; }
+        el.style.display = "";
+        el.innerHTML = `
+          <div class="card-title">🧠 Советник</div>
+          ${advice.map(a => `
+            <div class="list-item" style="background:transparent;border:none;padding:6px 0">
+              <span class="li-icon">${a.icon}</span>
+              <div class="li-body"><div class="li-title" style="font-weight:500;font-size:13px">${Utils.escape(a.text)}</div></div>
+            </div>
+          `).join("")}
+          <button class="btn btn-secondary btn-sm btn-block mt-8" onclick="Router.go('advisor')">Все советы</button>
+        `;
+      } catch (e) { el.style.display = "none"; }
+    },
+
+    renderDeadlines() {
+      const el = document.getElementById("home-deadlines-body");
+      if (!el) return;
+      if (!window.Deadlines) { el.style.display = "none"; return; }
+      try {
+        const upcoming = Deadlines.getUpcoming(14).slice(0, 5);
+        if (!upcoming.length) { el.style.display = "none"; return; }
+        el.style.display = "";
+        el.innerHTML = upcoming.map(d => {
+          const days = Utils.daysUntil(d.date);
+          const cls = days <= 1 ? "badge-danger" : days <= 5 ? "badge-warn" : "badge-info";
+          return `
+            <div class="list-item" style="padding:8px 0;border:none;background:transparent">
+              <span class="li-icon">${d.icon || "📅"}</span>
+              <div class="li-body">
+                <div class="li-title" style="font-size:13px">${Utils.escape(d.title)}</div>
+                <div class="li-sub">${Utils.fmtDate(d.date)}</div>
+              </div>
+              <span class="badge ${cls}">${days === 0 ? "сегодня" : days + " дн."}</span>
+            </div>
+          `;
+        }).join("");
+      } catch (e) { el.style.display = "none"; }
+    },
+
+    renderGoals() {
+      const el = document.getElementById("home-goals-body");
+      const card = document.getElementById("home-goals-card");
+      if (!el || !card) return;
+      const goals = Store.get("finance_goals", []);
+      if (!goals.length) { card.style.display = "none"; return; }
+      card.style.display = "";
+      el.innerHTML = goals.slice(0, 3).map(g => {
+        const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+        return `<div style="margin-bottom:10px">
+          <div class="row between">
+            <span class="text-sm">${Utils.escape(g.name)}</span>
+            <span class="text-xs text-muted">${Utils.formatNumber(g.current)} / ${Utils.formatNumber(g.target)} ₽</span>
+          </div>
+          <div class="progress"><div class="progress-bar honey" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join("");
+    }
+  };
+  window.NewHome = NewHome;
+
+  // ============================================================
+  // 8. ПЕРЕСОЗДАЁМ HTML ГЛАВНОЙ
+  // ============================================================
+  const homeScreen = document.getElementById("screen-home");
+  if (homeScreen) {
+    homeScreen.innerHTML = `
+      <h1 class="screen-title">🌾 Двор</h1>
+      <p class="screen-subtitle" id="home-subtitle">Сводка по хозяйству</p>
+
+      <div class="card info" id="home-weather-card">
+        <div class="card-title">🌦 Погода</div>
+        <div id="home-weather-body" class="text-muted">Загрузка...</div>
+      </div>
+
+      <div class="card warn" id="home-advice" style="display:none"></div>
+
+      <div class="card honey" id="home-deadlines-card" style="display:none">
+        <div class="card-title">⏳ Важные даты</div>
+        <div id="home-deadlines-body"></div>
+      </div>
+
+      <div id="home-season"></div>
+
+      <div class="card" id="home-quick" style="display:none"></div>
+
+      <h2 style="font-size:14px;margin:16px 0 8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">🏡 Хозяйство в цифрах</h2>
+      <div class="tiles-grid" id="home-tiles"></div>
+
+      <div class="card success" id="home-analytics" style="display:none"></div>
+
+      <div class="card honey" id="home-goals-card" style="display:none">
+        <div class="card-title">🎯 Цели</div>
+        <div id="home-goals-body"></div>
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // 9. ПЕРЕОПРЕДЕЛЯЕМ Home.render
+  // ============================================================
+  if (window.Home) {
+    Home.render = function() { NewHome.render(); };
+  } else {
+    window.Home = { render: () => NewHome.render() };
+  }
+
+  // ============================================================
+  // 10. РЕНДЕР МЕНЮ КАТЕГОРИЙ (аккордеон, раскрыт по умолчанию)
+  // ============================================================
+  const MenuScreen = {
+    structure: [
+      {
+        title: "Земля и растения", icon: "🌱",
+        items: [
+          { screen:"garden",    icon:"🌱", label:"Огород",   desc:"Грядки, посадки, полив" },
+          { screen:"mushrooms", icon:"🍄", label:"Грибы",    desc:"Сбор и выращивание" },
+          { screen:"bees",      icon:"🐝", label:"Пасека",   desc:"Ульи, мёд, осмотры" },
+          { screen:"resources", icon:"⛏", label:"Добыча",   desc:"Лес, вода, камень" }
+        ]
+      },
+      {
+        title: "Живность", icon: "🐔",
+        items: [
+          { screen:"livestock", icon:"🐔", label:"Живность", desc:"Птица, скот, продукция" },
+          { screen:"pets",      icon:"🐕", label:"Питомцы",  desc:"Собаки, кошки" }
+        ]
+      },
+      {
+        title: "Дом и стройка", icon: "🏠",
+        items: [
+          { screen:"build",     icon:"🏠", label:"Стройка",   desc:"Дом, баня, печи" },
+          { screen:"eng",       icon:"⚡", label:"Инженерия", desc:"Электрика, вода, тепло" },
+          { screen:"inventory", icon:"🧰", label:"Инвентарь", desc:"Что где лежит" },
+          { screen:"cellar",    icon:"🧊", label:"Погреб",    desc:"Запасы, сроки" }
+        ]
+      },
+      {
+        title: "Ремесло и переработка", icon: "🔨",
+        items: [
+          { screen:"crafts",  icon:"🔨", label:"Ремесло",      desc:"Столярка, сыры, свечи" },
+          { screen:"process", icon:"🔪", label:"Переработка",  desc:"Консервация, копчение" },
+          { screen:"smart",   icon:"🎁", label:"Умный урожай", desc:"Что делать с избытком" }
+        ]
+      },
+      {
+        title: "Хозяйство и деньги", icon: "💰",
+        items: [
+          { screen:"finance", icon:"💰", label:"Финансы",      desc:"Бюджет, цели, стратегии" },
+          { screen:"market",  icon:"💵", label:"Маркетплейс",  desc:"Куда продать" },
+          { screen:"coop",    icon:"🤝", label:"Кооперация",   desc:"Обмен с соседями" },
+          { screen:"time",    icon:"⏱", label:"Учёт времени", desc:"Себестоимость" }
+        ]
+      },
+      {
+        title: "Жизнь и порядок", icon: "👨‍👩‍👧",
+        items: [
+          { screen:"family",      icon:"👨‍👩‍👧", label:"Семья",       desc:"Задачи, документы" },
+          { screen:"photos",      icon:"📸", label:"Фото-дневник", desc:"Прогресс объектов" },
+          { screen:"deadlines",   icon:"⏳", label:"Дедлайны",     desc:"Обратный отсчёт" },
+          { screen:"maintenance", icon:"🗓", label:"Регламенты",   desc:"Периодические проверки" },
+          { screen:"mistakes",    icon:"📖", label:"Грабли",       desc:"Личные ошибки" }
+        ]
+      },
+      {
+        title: "Знания и обучение", icon: "📚",
+        items: [
+          { screen:"knowledge", icon:"💡", label:"База знаний", desc:"Лайфхаки, рецепты, законы" },
+          { screen:"school",    icon:"🎓", label:"Школа",       desc:"Мини-курсы" },
+          { screen:"medicine",  icon:"🩺", label:"Аптека",      desc:"Лекарства, травы" }
+        ]
+      },
+      {
+        title: "Инструменты", icon: "🌦",
+        items: [
+          { screen:"weather",  icon:"🌦", label:"Погода",     desc:"Прогноз, луна" },
+          { screen:"calendar", icon:"📆", label:"Календарь",  desc:"Сезонные работы" },
+          { screen:"map",      icon:"🗺", label:"Карта",      desc:"Участок, метки" }
+        ]
+      },
+      {
+        title: "Экстренно", icon: "🆘", danger: true,
+        items: [
+          { screen:"emergency", icon:"🆘", label:"Экстренный режим", desc:"Первая помощь, ЧС", danger:true }
+        ]
+      }
+    ],
+
+    render() {
+      const c = document.getElementById("menu-content");
+      if (!c) return;
+
+      c.innerHTML = this.structure.map((section, i) => `
+        <div class="menu-section open" data-menu-section="${i}">
+          <div class="menu-section-head">
+            <span class="ms-icon">${section.icon}</span>
+            <span class="ms-title">${Utils.escape(section.title)}</span>
+            <span class="ms-arrow">▶</span>
+          </div>
+          <div class="menu-section-body">
+            ${section.items.map(it => `
+              <div class="menu-item ${it.danger ? "danger" : ""}" data-screen="${it.screen}">
+                <span class="mi-icon">${it.icon}</span>
+                <div class="mi-body">
+                  <div class="mi-label">${Utils.escape(it.label)}</div>
+                  <div class="mi-desc">${Utils.escape(it.desc)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+
+      // Клик по заголовку — свернуть/развернуть
+      c.querySelectorAll(".menu-section-head").forEach(head => {
+        head.addEventListener("click", () => {
+          head.parentElement.classList.toggle("open");
+        });
+      });
+
+      // Клик по разделу — переход
+      c.querySelectorAll(".menu-item[data-screen]").forEach(item => {
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          Router.go(item.dataset.screen);
+        });
+      });
+
+      // Поиск
+      const inp = document.getElementById("menu-search");
+      if (inp && !inp.dataset.bound) {
+        inp.dataset.bound = "1";
+        inp.addEventListener("input", Utils.debounce(() => {
+          const q = inp.value.trim().toLowerCase();
+          c.querySelectorAll(".menu-section").forEach(section => {
+            let visibleCount = 0;
+            section.querySelectorAll(".menu-item").forEach(item => {
+              const match = !q || item.textContent.toLowerCase().includes(q);
+              item.style.display = match ? "" : "none";
+              if (match) visibleCount++;
+            });
+            section.style.display = visibleCount ? "" : "none";
+          });
+        }, 250));
+      }
+    }
+  };
+  window.MenuScreen = MenuScreen;
+
+  // Регистрируем screen-menu в Registry
+  Registry.register("menu", "Все разделы", "📂", () => MenuScreen.render());
+
+  // ============================================================
+  // 11. ФИКС КНОПКИ «ЕЩЁ» — теперь ведёт на screen-menu
+  // ============================================================
+  const menuBtn = document.querySelector('.nav-item[data-screen="menu"]');
+  if (menuBtn) {
+    // Удаляем старые обработчики
+    const newBtn = menuBtn.cloneNode(true);
+    menuBtn.parentNode.replaceChild(newBtn, menuBtn);
+    newBtn.addEventListener("click", () => {
+      Router.go("menu");
+    });
+  }
+
+  // ============================================================
+  // 12. ОБНОВЛЯЕМ Router.go — добавлена поддержка "menu"
+  // ============================================================
+  const origGo = Router.go.bind(Router);
+  Router.go = function(screen, updateHash) {
+    // Спец-случай: кнопка "Ещё" — ведёт на экран menu
+    if (screen === "menu") {
+      const target = document.getElementById("screen-menu");
+      if (!target) {
+        origGo("home", updateHash);
+        return;
+      }
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      target.classList.add("active");
+      Router.current = "menu";
+      if (updateHash) location.hash = "menu";
+      window.scrollTo({ top: 0, behavior: "instant" });
+      document.querySelectorAll(".nav-item").forEach(b => {
+        b.classList.toggle("active", b.dataset.screen === "menu");
+      });
+      try {
+        MenuScreen.render();
+      } catch (err) {
+        console.error("Ошибка меню:", err);
+        target.innerHTML = `<div class="card danger"><div class="card-title">Ошибка меню</div><p class="text-sm">${Utils.escape(String(err))}</p></div>`;
+      }
+      return;
+    }
+    // Обычный переход
+    origGo(screen, updateHash);
+  };
+
+  // ============================================================
+  // 13. РЕГИСТРИРУЕМ ЗАГЛУШКИ ДЛЯ УПАВШИХ МОДУЛЕЙ
+  // ============================================================
+  const requiredModules = [
+    "advisor","finance","deadlines","garden","mushrooms","bees","livestock","pets",
+    "build","eng","cellar","process","inventory","medicine","resources","crafts",
+    "family","photos","maintenance","mistakes","school","smart","market","coop",
+    "time","map","weather","calendar","knowledge","emergency","search","settings"
+  ];
+  const missing = requiredModules.filter(m => !Registry.modules[m]);
+  if (missing.length) {
+    console.warn("⚠ Регистрирую заглушки для:", missing);
+    missing.forEach(m => {
+      Registry.register(m, m, "⚠", () => {
+        const target = document.getElementById("screen-" + m);
+        if (!target) return;
+        const contentEl = target.querySelector("[id$='-content']") || target;
+        contentEl.innerHTML = `
+          <div class="card warn">
+            <div class="card-title">⚠ Раздел «${m}» не загрузился</div>
+            <p class="text-sm">Проверь консоль (F12) — там указана ошибка.</p>
+          </div>
+        `;
+      });
+    });
+  }
+
+  // ============================================================
+  // 14. ПРИ ЗАПУСКЕ — ОБНОВЛЯЕМ ГЛАВНУЮ
+  // ============================================================
+  if (Home && Home.render) {
+    // Не вызываем сразу — ждём, пока всё загрузится
+    setTimeout(() => {
+      try {
+        Home.render();
+        console.log("✅ Главная обновлена");
+      } catch (e) {
+        console.error("Ошибка главной:", e);
+      }
+    }, 300);
+  }
+
+  console.log("✅ Патч v4.1 применён");
+  console.log("Разделов в Registry:", Object.keys(Registry.modules).length);
+  console.log("Активных категорий:", {
+    Огород: Activity.hasGarden(),
+    Пасека: Activity.hasBees(),
+    Живность: Activity.hasLivestock(),
+    Финансы: Activity.hasFinance(),
+    Питомцы: Activity.hasPets()
+  });
+})();
+</script>
 </body>
 </html>
