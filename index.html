@@ -10679,5 +10679,827 @@ console.log("🎉 ДВОР v4.0 — полностью готов!");
   console.log("✅ Патч v4.3 применён");
 })();
 </script>
+<script>
+/* ============================================================
+   ФИКС РЕГИСТРАЦИИ — пересоздаёт модули если упали
+   ============================================================ */
+(function fixRegistration() {
+  "use strict";
+  console.log("🔧 Фикс регистрации запущен...");
+
+  if (!window.Registry) {
+    console.error("❌ Registry не найден");
+    return;
+  }
+  if (!window.Store) {
+    console.error("❌ Store не найден");
+    return;
+  }
+
+  // ============================================================
+  // 1. СОВЕТНИК — пересоздаём если упал
+  // ============================================================
+  if (!window.Advisor || !Registry.modules["advisor"]) {
+    console.log("⚠ Пересоздаю Советник...");
+    window.Advisor = {
+      rules: [
+        { id:"garden-water", level:"important", icon:"💧", check() {
+          const log = Store.get("garden_water_tracker", {});
+          if (log[new Date().toISOString().slice(0,10)]) return null;
+          const beds = Store.get("garden_beds", []);
+          if (!beds.length) return null;
+          const weather = Store.get("weather_cache", null);
+          const temp = weather?.data?.current?.temp;
+          if (temp && temp > 25) return `Жарко ${Math.round(temp)}°C — полей грядки (${beds.length} шт)`;
+          return null;
+        }},
+        { id:"garden-frost", level:"critical", icon:"🥶", check() {
+          const weather = Store.get("weather_cache", null);
+          if (!weather?.data?.daily) return null;
+          const today = weather.data.daily[0];
+          if (today && today.tmin < 3 && today.tmin > -5) return `Ночью ${Math.round(today.tmin)}°C — укрой растения`;
+          if (today && today.tmin <= -5) return `Заморозок ${Math.round(today.tmin)}°C — всё под укрытие`;
+          return null;
+        }},
+        { id:"bee-inspection", level:"important", icon:"🐝", check() {
+          const hives = Store.get("bee_hives", []);
+          if (!hives.length) return null;
+          const insp = Store.get("bee_inspections", []);
+          const lastByHive = {};
+          insp.forEach(i => { if (!lastByHive[i.hive] || i.date > lastByHive[i.hive]) lastByHive[i.hive] = i.date; });
+          const stale = hives.filter(h => {
+            const last = lastByHive[h.number];
+            if (!last) return true;
+            return Utils.daysBetween(last, new Date().toISOString().slice(0,10)) > 14;
+          });
+          if (stale.length) return `${stale.length} ульев не осматривались >14 дней`;
+          return null;
+        }},
+        { id:"finance-reserve", level:"important", icon:"💰", check() {
+          const reserve = Store.get("finance_reserve", { current:0, target:0 });
+          const tx = Store.get("economy_tx", []);
+          const now = new Date();
+          const monthExp = tx.filter(t => {
+            const d = new Date(t.date);
+            return t.type === "expense" && d.getMonth() === now.getMonth();
+          }).reduce((s, t) => s + (+t.amount || 0), 0);
+          if (monthExp > 0 && reserve.current < monthExp * 3) {
+            const need = Math.round((monthExp * 3 - reserve.current) / 1000);
+            return `Резерв < 3 мес. Нужно ещё ~${need} тыс. ₽`;
+          }
+          return null;
+        }},
+        { id:"med-kit", level:"important", icon:"🩹", check() {
+          const kit = Store.get("med_kit", []);
+          if (!kit.length) return "Аптечка не заполнена";
+          const expired = kit.filter(k => k.exp && Utils.daysUntil(k.exp) < 0);
+          if (expired.length) return `${expired.length} просроченных лекарств`;
+          return null;
+        }},
+        { id:"cellar-expired", level:"critical", icon:"📦", check() {
+          const stock = Store.get("cellar_stock", []);
+          const expired = stock.filter(s => s.exp && Utils.daysUntil(s.exp) < 0);
+          if (expired.length) return `${expired.length} запасов в погребе просрочено`;
+          return null;
+        }},
+        { id:"deadline-today", level:"critical", icon:"⏳", check() {
+          if (!window.Deadlines) return null;
+          try {
+            const upcoming = Deadlines.getUpcoming(1);
+            if (upcoming.length) return `Срочно: ${upcoming.map(d => d.title).join(", ")}`;
+          } catch (e) {}
+          return null;
+        }}
+      ],
+
+      levelOrder: { critical:0, important:1, info:2 },
+
+      getAll() {
+        const results = [];
+        this.rules.forEach(r => {
+          try {
+            const res = r.check();
+            if (res) results.push({ id:r.id, level:r.level, icon:r.icon, text:res });
+          } catch (e) {}
+        });
+        const level = Store.get("advisor_level", "important");
+        if (level === "off") return [];
+        if (level === "critical") return results.filter(r => r.level === "critical");
+        if (level === "important") return results.filter(r => r.level !== "info");
+        return results;
+      },
+
+      render() {
+        const wrap = document.getElementById("advisor-content");
+        if (!wrap) return;
+        const advice = this.getAll();
+        advice.sort((a, b) => (this.levelOrder[a.level] ?? 9) - (this.levelOrder[b.level] ?? 9));
+
+        const critical = advice.filter(a => a.level === "critical");
+        const important = advice.filter(a => a.level === "important");
+        const info = advice.filter(a => a.level === "info");
+
+        let html = `
+          <div class="card success">
+            <div class="card-title">🧠 Советник</div>
+            <p class="text-sm">Анализирует твои данные и даёт персональные советы.</p>
+            <div class="row between mt-12">
+              <div>
+                <div style="font-size:26px;font-weight:800">${advice.length}</div>
+                <div class="text-muted text-xs">советов</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="Advisor.render()">🔄 Обновить</button>
+            </div>
+          </div>
+        `;
+
+        if (!advice.length) {
+          html += `<div class="card success"><div class="card-title">✅ Всё в порядке</div>
+            <p class="text-sm">Веди записи — я начну подсказывать.</p></div>`;
+        } else {
+          if (critical.length) html += `<div class="card danger"><div class="card-title">🚨 Срочно (${critical.length})</div>${critical.map(a => this.renderAdvice(a)).join("")}</div>`;
+          if (important.length) html += `<div class="card warn"><div class="card-title">⚠ Важное (${important.length})</div>${important.map(a => this.renderAdvice(a)).join("")}</div>`;
+          if (info.length) html += `<div class="card info"><div class="card-title">💡 Полезное (${info.length})</div>${info.map(a => this.renderAdvice(a)).join("")}</div>`;
+        }
+
+        html += `
+          <div class="card">
+            <div class="card-title">⚙ Настройки</div>
+            <div class="field">
+              <label>Уровень советов</label>
+              <select id="adv-level">
+                <option value="all">Все советы</option>
+                <option value="important" selected>Только важные</option>
+                <option value="critical">Только критичные</option>
+                <option value="off">Выключить</option>
+              </select>
+            </div>
+          </div>
+        `;
+
+        wrap.innerHTML = html;
+        const sel = document.getElementById("adv-level");
+        if (sel) {
+          sel.value = Store.get("advisor_level", "important");
+          sel.addEventListener("change", () => {
+            Store.set("advisor_level", sel.value);
+            this.render();
+          });
+        }
+      },
+
+      renderAdvice(a) {
+        return `<div class="list-item" style="background:transparent;border:none;padding:8px 0">
+          <span class="li-icon">${a.icon}</span>
+          <div class="li-body"><div class="li-title" style="font-weight:500">${Utils.escape(a.text)}</div></div>
+        </div>`;
+      },
+
+      renderScreen() { this.render(); }
+    };
+    Registry.register("advisor", "Советник", "🧠", () => window.Advisor.render());
+    console.log("✅ Советник пересоздан и зарегистрирован");
+  }
+
+  // ============================================================
+  // 2. ФИНАНСЫ — пересоздаём если упал
+  // ============================================================
+  if (!window.Finance || !Registry.modules["finance"]) {
+    console.log("⚠ Пересоздаю Финансы...");
+    window.Finance = {
+      currentTab: "overview",
+
+      render() {
+        const tabsWrap = document.getElementById("finance-tabs");
+        if (tabsWrap && !tabsWrap.dataset.boundFix) {
+          tabsWrap.dataset.boundFix = "1";
+          tabsWrap.addEventListener("click", (e) => {
+            const chip = e.target.closest(".chip");
+            if (!chip) return;
+            tabsWrap.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            this.currentTab = chip.dataset.tab;
+            this.renderTab();
+          });
+        }
+        this.renderTab();
+      },
+
+      renderTab() {
+        const c = document.getElementById("finance-content");
+        if (!c) return;
+        switch (this.currentTab) {
+          case "overview":   this.renderOverview(c); break;
+          case "budget":     this.renderBudget(c); break;
+          case "goals":      this.renderGoals(c); break;
+          case "reserve":    this.renderReserve(c); break;
+          case "strategies": this.renderStrategies(c); break;
+          case "debts":      this.renderDebts(c); break;
+          case "prices":     this.renderPrices(c); break;
+          case "income":     this.renderTx(c, "income"); break;
+          case "expense":    this.renderTx(c, "expense"); break;
+          case "monetize":   this.renderMonetize(c); break;
+          default:           this.renderOverview(c);
+        }
+      },
+
+      renderOverview(c) {
+        const tx = Store.get("economy_tx", []);
+        const now = new Date();
+        const thisMonth = tx.filter(t => {
+          const d = new Date(t.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        const income = thisMonth.filter(t => t.type === "income").reduce((s,t) => s+(+t.amount||0), 0);
+        const expense = thisMonth.filter(t => t.type === "expense").reduce((s,t) => s+(+t.amount||0), 0);
+        const balance = income - expense;
+        const allIncome = tx.filter(t => t.type === "income").reduce((s,t) => s+(+t.amount||0), 0);
+        const allExpense = tx.filter(t => t.type === "expense").reduce((s,t) => s+(+t.amount||0), 0);
+
+        c.innerHTML = `
+          <div class="card success">
+            <div class="card-title">📊 Этот месяц</div>
+            <div style="font-size:34px;font-weight:800;color:${balance >= 0 ? 'var(--green-700)' : 'var(--danger)'}">${Utils.formatNumber(balance)} ₽</div>
+            <div class="divider"></div>
+            <div class="row between">
+              <div><div class="text-muted text-xs">Доходы</div><div style="font-weight:700;color:var(--green-700)">+${Utils.formatNumber(income)} ₽</div></div>
+              <div style="text-align:right"><div class="text-muted text-xs">Расходы</div><div style="font-weight:700;color:var(--danger)">−${Utils.formatNumber(expense)} ₽</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📈 За всё время</div>
+            <div class="row between">
+              <div><div class="text-muted text-xs">Заработано</div><div style="font-weight:700">+${Utils.formatNumber(allIncome)} ₽</div></div>
+              <div><div class="text-muted text-xs">Потрачено</div><div style="font-weight:700">−${Utils.formatNumber(allExpense)} ₽</div></div>
+              <div style="text-align:right"><div class="text-muted text-xs">Баланс</div><div style="font-weight:700;color:${allIncome-allExpense >= 0 ? 'var(--green-700)' : 'var(--danger)'}">${Utils.formatNumber(allIncome-allExpense)} ₽</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚡ Действия</div>
+            <div class="row wrap">
+              <button class="btn btn-primary btn-sm grow" onclick="Finance.openAddTx('income')">+ Доход</button>
+              <button class="btn btn-secondary btn-sm grow" onclick="Finance.openAddTx('expense')">+ Расход</button>
+            </div>
+          </div>
+        `;
+      },
+
+      renderBudget(c) {
+        const budget = Store.get("finance_budget", {});
+        const year = new Date().getFullYear();
+        const tx = Store.get("economy_tx", []);
+        const fact = [0,1,2,3,4,5,6,7,8,9,10,11].map(m => {
+          const mTx = tx.filter(t => {
+            const d = new Date(t.date);
+            return d.getMonth() === m && d.getFullYear() === year;
+          });
+          return {
+            inc: mTx.filter(t => t.type === "income").reduce((s,t) => s+(+t.amount||0), 0),
+            exp: mTx.filter(t => t.type === "expense").reduce((s,t) => s+(+t.amount||0), 0)
+          };
+        });
+        c.innerHTML = `
+          <div class="card info"><div class="card-title">💰 Бюджет ${year}</div><p class="text-sm">План и факт по месяцам.</p></div>
+          ${[0,1,2,3,4,5,6,7,8,9,10,11].map(m => {
+            const planInc = +budget["inc_" + m] || 0;
+            const planExp = +budget["exp_" + m] || 0;
+            const f = fact[m];
+            return `
+              <div class="card">
+                <div class="card-title" style="font-size:14px">${Utils.monthName(m)}</div>
+                <div class="row between mb-8">
+                  <span class="text-xs text-muted">Доход</span>
+                  <div class="text-xs">план <input type="number" value="${planInc}" data-bud="inc_${m}" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg)"> → <span class="badge ${f.inc >= planInc ? 'badge-green' : 'badge-warn'}">${Utils.formatNumber(f.inc)}</span></div>
+                </div>
+                <div class="row between">
+                  <span class="text-xs text-muted">Расход</span>
+                  <div class="text-xs">план <input type="number" value="${planExp}" data-bud="exp_${m}" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg)"> → <span class="badge ${f.exp <= planExp ? 'badge-green' : 'badge-danger'}">${Utils.formatNumber(f.exp)}</span></div>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        `;
+        c.querySelectorAll("[data-bud]").forEach(inp => {
+          inp.addEventListener("change", () => {
+            const b = Store.get("finance_budget", {});
+            b[inp.dataset.bud] = +inp.value || 0;
+            Store.set("finance_budget", b);
+          });
+        });
+      },
+
+      renderGoals(c) {
+        const goals = Store.get("finance_goals", []);
+        c.innerHTML = `
+          <div class="row between mb-12">
+            <span class="text-muted">Цели</span>
+            <button class="btn btn-primary btn-sm" id="fin-goal-add">+ Цель</button>
+          </div>
+          <div id="fin-goals-list"></div>
+        `;
+        const listEl = document.getElementById("fin-goals-list");
+        if (!goals.length) {
+          listEl.innerHTML = `<div class="empty"><span class="emoji">🎯</span><p>Нет целей</p></div>`;
+        } else {
+          listEl.innerHTML = goals.map(g => {
+            const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+            const left = g.target - g.current;
+            return `
+              <div class="card">
+                <div class="row between mb-8">
+                  <b>${Utils.escape(g.name)}</b>
+                  <button class="li-btn" data-goal-del="${g.id}">🗑</button>
+                </div>
+                <div class="progress"><div class="progress-bar honey" style="width:${pct}%"></div></div>
+                <div class="row between mt-8">
+                  <span class="text-sm">${Utils.formatNumber(g.current)} / ${Utils.formatNumber(g.target)} ₽</span>
+                  <span class="badge ${pct >= 100 ? 'badge-green' : 'badge-honey'}">${pct}%</span>
+                </div>
+                ${left > 0 ? `<div class="text-xs text-muted mt-4">Осталось: ${Utils.formatNumber(left)} ₽</div>` : ""}
+                <div class="row mt-12">
+                  <input type="number" placeholder="Добавить" id="goal-add-${g.id}" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+                  <button class="btn btn-primary btn-sm" data-goal-plus="${g.id}">+</button>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+        document.getElementById("fin-goal-add").addEventListener("click", () => this.openAddGoal());
+        listEl.querySelectorAll("[data-goal-del]").forEach(b => b.addEventListener("click", () => {
+          if (!confirm("Удалить?")) return;
+          Store.set("finance_goals", Store.get("finance_goals", []).filter(g => g.id !== b.dataset.goalDel));
+          this.renderTab();
+        }));
+        listEl.querySelectorAll("[data-goal-plus]").forEach(b => {
+          b.addEventListener("click", () => {
+            const v = +document.getElementById("goal-add-" + b.dataset.goalPlus).value || 0;
+            if (!v) return;
+            const gs = Store.get("finance_goals", []);
+            const i = gs.findIndex(x => x.id === b.dataset.goalPlus);
+            if (i >= 0) { gs[i].current = (+gs[i].current || 0) + v; Store.set("finance_goals", gs); this.renderTab(); Toast.show("Добавлено", "success"); }
+          });
+        });
+      },
+
+      openAddGoal() {
+        Modal.open("Новая цель", `
+          <div class="field"><label>Название</label><input id="g-name" placeholder="Трактор"></div>
+          <div class="field"><label>Цель, ₽</label><input type="number" id="g-target" placeholder="300000"></div>
+          <div class="field"><label>Уже есть, ₽</label><input type="number" id="g-current" value="0"></div>
+          <div class="field"><label>Срок</label><input type="date" id="g-deadline"></div>
+          <button class="btn btn-primary btn-block" id="g-save">Создать</button>
+        `, () => {
+          document.getElementById("g-save").addEventListener("click", () => {
+            const name = document.getElementById("g-name").value.trim();
+            const target = +document.getElementById("g-target").value;
+            if (!name || !target) { Toast.show("Заполни поля", "danger"); return; }
+            const gs = Store.get("finance_goals", []);
+            gs.push({ id: Utils.uid(), name, target, current: +document.getElementById("g-current").value || 0, deadline: document.getElementById("g-deadline").value });
+            Store.set("finance_goals", gs);
+            Modal.close();
+            Toast.show("Создано", "success");
+            this.renderTab();
+          });
+        });
+      },
+
+      renderReserve(c) {
+        const r = Store.get("finance_reserve", { current:0, target:0 });
+        const tx = Store.get("economy_tx", []);
+        const now = new Date();
+        const lastMonthExp = tx.filter(t => {
+          const d = new Date(t.date);
+          const m = new Date(now); m.setMonth(m.getMonth() - 1);
+          return t.type === "expense" && d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
+        }).reduce((s,t) => s+(+t.amount||0), 0);
+        const recommended = lastMonthExp * 3;
+        const pct = r.target > 0 ? Math.min(100, Math.round((r.current / r.target) * 100)) : 0;
+        c.innerHTML = `
+          <div class="card success">
+            <div class="card-title">🛡 Резерв</div>
+            <p class="text-sm mb-8">Правило: 3–6 месяцев расходов.</p>
+            <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div class="row between mt-8">
+              <span class="text-sm">${Utils.formatNumber(r.current)} / ${Utils.formatNumber(r.target)} ₽</span>
+              <span class="badge ${pct >= 100 ? 'badge-green' : 'badge-honey'}">${pct}%</span>
+            </div>
+            ${lastMonthExp ? `<p class="text-xs text-muted mt-8">Рекомендуется: <b>${Utils.formatNumber(recommended)} ₽</b></p>` : ""}
+          </div>
+          <div class="card">
+            <div class="card-title">⚙ Настройка</div>
+            <div class="field"><label>Текущий резерв, ₽</label><input type="number" id="res-current" value="${r.current || 0}"></div>
+            <div class="field"><label>Цель, ₽</label><input type="number" id="res-target" value="${r.target || 0}"></div>
+            <button class="btn btn-primary btn-block" id="res-save">Сохранить</button>
+          </div>
+        `;
+        document.getElementById("res-save").addEventListener("click", () => {
+          Store.set("finance_reserve", {
+            current: +document.getElementById("res-current").value || 0,
+            target: +document.getElementById("res-target").value || 0
+          });
+          Toast.show("Сохранено", "success");
+          this.renderTab();
+        });
+      },
+
+      renderStrategies(c) {
+        const strategies = [
+          { icon:"🛡", name:"Резервный фонд", desc:"3–6 месяцев расходов.", steps:["Посчитай месячные расходы","Умножь на 3–6","Откладывай 10–20%","Храни отдельно"] },
+          { icon:"📊", name:"Правило 50/30/20", desc:"50% нужды, 30% желания, 20% сбережения.", steps:["Посчитай доход","Раздели на 3","Не перекладывай"] },
+          { icon:"⛓", name:"Снежный ком долгов", desc:"Гаси от меньшего к большему.", steps:["Выпиши долги","Сортируй","Минимум по всем, кроме первого","Закрыв — к следующему"] },
+          { icon:"🌊", name:"Снежная лавина", desc:"Гаси с высокой ставки.", steps:["Сортируй по ставке","На самый дорогой — все деньги"] },
+          { icon:"🏦", name:"Вклад с капитализацией", desc:"Сложный процент.", steps:["Открой вклад","Капитализация","Не снимай проценты"] },
+          { icon:"🥇", name:"Золото", desc:"Защита от девальвации.", steps:["Покупай регулярно","10–15% накоплений"] },
+          { icon:"🌱", name:"Развитие хозяйства", desc:"Вложение в то, что даёт доход.", steps:["Оцени окупаемость","Начни с малого","Реинвестируй"] },
+          { icon:"🛠", name:"Правило 24 часов", desc:"Не покупай спонтанно.", steps:["Запиши желание","Жди сутки","Сэкономленное — в резерв"] },
+          { icon:"📉", name:"Сократи постоянные", desc:"Режь подписки.", steps:["Выпиши","Отмени лишнее","Сэкономленное — в резерв"] },
+          { icon:"🔁", name:"Реинвестирование", desc:"50% прибыли — обратно.", steps:["Учти доход","50% — в дело","25% — в новое"] }
+        ];
+        c.innerHTML = `
+          <div class="card success"><div class="card-title">📚 Стратегии</div><p class="text-sm">10 стратегий роста.</p></div>
+          ${strategies.map(s => `
+            <div class="accordion">
+              <div class="accordion-head">${s.icon} ${Utils.escape(s.name)} <span class="arrow">▶</span></div>
+              <div class="accordion-body">
+                <p>${Utils.escape(s.desc)}</p>
+                <ol style="margin-left:20px;font-size:14px">${s.steps.map(st => `<li>${Utils.escape(st)}</li>`).join("")}</ol>
+              </div>
+            </div>
+          `).join("")}
+        `;
+        c.querySelectorAll(".accordion").forEach(acc => {
+          const head = acc.querySelector(".accordion-head");
+          head.addEventListener("click", () => acc.classList.toggle("open"));
+        });
+      },
+
+      renderDebts(c) {
+        const debts = Store.get("finance_debts", []);
+        const totalOwe = debts.filter(d => d.type === "i_owe").reduce((s,d) => s+(+d.amount||0)-(+d.paid||0), 0);
+        const totalLent = debts.filter(d => d.type === "owe_me").reduce((s,d) => s+(+d.amount||0)-(+d.paid||0), 0);
+        c.innerHTML = `
+          <div class="card danger"><div class="card-title">💸 Я должен</div><div style="font-size:26px;font-weight:800">${Utils.formatNumber(totalOwe)} ₽</div></div>
+          <div class="card success"><div class="card-title">💵 Мне должны</div><div style="font-size:26px;font-weight:800">${Utils.formatNumber(totalLent)} ₽</div></div>
+          <div class="row between mb-12">
+            <span class="text-muted">Долги (${debts.length})</span>
+            <button class="btn btn-primary btn-sm" id="debt-add">+ Долг</button>
+          </div>
+          <div id="debt-list"></div>
+        `;
+        const listEl = document.getElementById("debt-list");
+        if (!debts.length) {
+          listEl.innerHTML = `<div class="empty"><span class="emoji">💳</span><p>Долгов нет</p></div>`;
+        } else {
+          listEl.innerHTML = debts.map(d => {
+            const left = (+d.amount || 0) - (+d.paid || 0);
+            const pct = d.amount > 0 ? Math.round((+d.paid / d.amount) * 100) : 0;
+            const isMine = d.type === "i_owe";
+            return `
+              <div class="card">
+                <div class="row between mb-8">
+                  <b>${isMine ? "💸" : "💵"} ${Utils.escape(d.who)}</b>
+                  <button class="li-btn" data-debt-del="${d.id}">🗑</button>
+                </div>
+                <div class="progress"><div class="progress-bar ${isMine ? 'danger' : ''}" style="width:${pct}%"></div></div>
+                <div class="row between mt-8">
+                  <span class="text-sm">${Utils.formatNumber(d.paid || 0)} / ${Utils.formatNumber(d.amount)} ₽</span>
+                  <span class="badge ${isMine ? 'badge-danger' : 'badge-green'}">осталось ${Utils.formatNumber(left)}</span>
+                </div>
+                <div class="row mt-12">
+                  <input type="number" placeholder="Платёж" id="pay-${d.id}" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+                  <button class="btn btn-primary btn-sm" data-debt-pay="${d.id}">Оплатить</button>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+        document.getElementById("debt-add").addEventListener("click", () => this.openAddDebt());
+        listEl.querySelectorAll("[data-debt-del]").forEach(b => b.addEventListener("click", () => {
+          if (!confirm("Удалить?")) return;
+          Store.set("finance_debts", Store.get("finance_debts", []).filter(x => x.id !== b.dataset.debtDel));
+          this.renderTab();
+        }));
+        listEl.querySelectorAll("[data-debt-pay]").forEach(b => {
+          b.addEventListener("click", () => {
+            const v = +document.getElementById("pay-" + b.dataset.debtPay).value || 0;
+            if (!v) return;
+            const ds = Store.get("finance_debts", []);
+            const i = ds.findIndex(x => x.id === b.dataset.debtPay);
+            if (i >= 0) { ds[i].paid = (+ds[i].paid || 0) + v; Store.set("finance_debts", ds); this.renderTab(); Toast.show("Оплачено", "success"); }
+          });
+        });
+      },
+
+      openAddDebt() {
+        Modal.open("Новый долг", `
+          <div class="field"><label>Тип</label>
+            <select id="d-type">
+              <option value="i_owe">Я должен</option>
+              <option value="owe_me">Мне должны</option>
+            </select>
+          </div>
+          <div class="field"><label>Кому/кто</label><input id="d-who"></div>
+          <div class="field"><label>Сумма, ₽</label><input type="number" id="d-amount"></div>
+          <div class="field"><label>Уже отдано, ₽</label><input type="number" id="d-paid" value="0"></div>
+          <div class="field"><label>Срок</label><input type="date" id="d-deadline"></div>
+          <button class="btn btn-primary btn-block" id="d-save">Сохранить</button>
+        `, () => {
+          document.getElementById("d-save").addEventListener("click", () => {
+            const who = document.getElementById("d-who").value.trim();
+            const amount = +document.getElementById("d-amount").value;
+            if (!who || !amount) { Toast.show("Заполни", "danger"); return; }
+            const ds = Store.get("finance_debts", []);
+            ds.push({ id: Utils.uid(), type: document.getElementById("d-type").value, who, amount, paid: +document.getElementById("d-paid").value || 0, deadline: document.getElementById("d-deadline").value });
+            Store.set("finance_debts", ds);
+            Modal.close();
+            Toast.show("Сохранено", "success");
+            this.renderTab();
+          });
+        });
+      },
+
+      renderPrices(c) {
+        const prices = Store.get("finance_prices", []);
+        c.innerHTML = `
+          <div class="card info"><div class="card-title">💰 Трекер цен</div><p class="text-sm">Записывай — увидишь тренд.</p></div>
+          <div class="row between mb-12">
+            <span class="text-muted">Записи (${prices.length})</span>
+            <button class="btn btn-primary btn-sm" id="price-add">+ Цена</button>
+          </div>
+          <div id="prices-list"></div>
+        `;
+        const listEl = document.getElementById("prices-list");
+        if (!prices.length) {
+          listEl.innerHTML = `<div class="empty"><span class="emoji">💰</span><p>Нет записей</p></div>`;
+        } else {
+          const byProduct = {};
+          prices.forEach(p => { if (!byProduct[p.product]) byProduct[p.product] = []; byProduct[p.product].push(p); });
+          listEl.innerHTML = Object.entries(byProduct).map(([prod, list]) => {
+            list.sort((a,b) => a.date.localeCompare(b.date));
+            const last = list[list.length-1];
+            const prev = list.length > 1 ? list[list.length-2] : null;
+            const diff = prev ? last.price - prev.price : 0;
+            const trend = diff > 0 ? "📈" : diff < 0 ? "📉" : "—";
+            return `
+              <div class="card">
+                <div class="row between">
+                  <b>${Utils.escape(prod)}</b>
+                  <span class="badge ${diff > 0 ? 'badge-danger' : diff < 0 ? 'badge-green' : 'badge-info'}">${trend} ${diff > 0 ? "+" : ""}${diff} ₽</span>
+                </div>
+                <div class="text-sm mt-4">Последняя: ${last.price} ₽ (${Utils.fmtDate(last.date)})</div>
+              </div>
+            `;
+          }).join("");
+        }
+        document.getElementById("price-add").addEventListener("click", () => {
+          Modal.open("Новая цена", `
+            <div class="field"><label>Товар</label><input id="p-prod"></div>
+            <div class="field"><label>Цена ₽</label><input type="number" id="p-price"></div>
+            <div class="field"><label>Единица</label><input id="p-unit" placeholder="кг / л"></div>
+            <div class="field"><label>Дата</label><input type="date" id="p-date" value="${Utils.todayISO()}"></div>
+            <button class="btn btn-primary btn-block" id="p-save">Сохранить</button>
+          `, () => {
+            document.getElementById("p-save").addEventListener("click", () => {
+              const product = document.getElementById("p-prod").value.trim();
+              const price = +document.getElementById("p-price").value;
+              if (!product || !price) { Toast.show("Заполни", "danger"); return; }
+              const ps = Store.get("finance_prices", []);
+              ps.push({ id: Utils.uid(), product, price, unit: document.getElementById("p-unit").value.trim(), date: document.getElementById("p-date").value });
+              Store.set("finance_prices", ps);
+              Modal.close();
+              Toast.show("Сохранено", "success");
+              this.renderTab();
+            });
+          });
+        });
+      },
+
+      renderTx(c, type) {
+        const list = Store.get("economy_tx", []).filter(t => t.type === type);
+        const total = list.reduce((s,t) => s+(+t.amount||0), 0);
+        c.innerHTML = `
+          <div class="card">
+            <div class="card-title">${type === "income" ? "💵 Доходы" : "💸 Расходы"} — ${Utils.formatNumber(total)} ₽</div>
+          </div>
+          <div class="row between mb-12">
+            <span class="text-muted">Записи</span>
+            <button class="btn btn-primary btn-sm" onclick="Finance.openAddTx('${type}')">+ Добавить</button>
+          </div>
+          <div id="tx-list"></div>
+        `;
+        const listEl = document.getElementById("tx-list");
+        if (!list.length) {
+          listEl.innerHTML = `<div class="empty"><span class="emoji">${type === "income" ? "💵" : "💸"}</span><p>Пока пусто</p></div>`;
+        } else {
+          listEl.innerHTML = list.sort((a,b) => (b.date||"").localeCompare(a.date||"")).map(t => `
+            <div class="list-item">
+              <span class="li-icon">${type === "income" ? "💵" : "💸"}</span>
+              <div class="li-body">
+                <div class="li-title">${Utils.escape(t.category)}</div>
+                <div class="li-sub">${Utils.fmtDate(t.date)}${t.note ? " · " + Utils.escape(t.note) : ""}</div>
+              </div>
+              <div style="font-weight:700;color:${type === "income" ? 'var(--green-700)' : 'var(--danger)'}">
+                ${type === "income" ? "+" : "−"}${Utils.formatNumber(t.amount)} ₽
+              </div>
+              <button class="li-btn" data-tx-del="${t.id}">🗑</button>
+            </div>
+          `).join("");
+          listEl.querySelectorAll("[data-tx-del]").forEach(b => b.addEventListener("click", () => {
+            if (!confirm("Удалить?")) return;
+            Store.set("economy_tx", Store.get("economy_tx", []).filter(x => x.id !== b.dataset.txDel));
+            this.renderTab();
+          }));
+        }
+      },
+
+      openAddTx(type) {
+        const cats = type === "income"
+          ? ["Мёд","Яйца","Молоко","Мясо","Овощи","Фрукты","Грибы","Ягоды","Сыры","Пенсия","Зарплата","Прочее"]
+          : ["Корма","Удобрения","Семена","Топливо","Ветпрепараты","Инструмент","Стройматериалы","Электричество","Газ","Вода","Ремонт","Еда","Прочее"];
+        Modal.open(type === "income" ? "Новый доход" : "Новый расход", `
+          <div class="field"><label>Категория</label>
+            <select id="tx-cat">${cats.map(c => `<option>${c}</option>`).join("")}</select>
+          </div>
+          <div class="field"><label>Сумма ₽</label><input type="number" id="tx-amount"></div>
+          <div class="field"><label>Дата</label><input type="date" id="tx-date" value="${Utils.todayISO()}"></div>
+          <div class="field"><label>Заметка</label><textarea id="tx-note"></textarea></div>
+          <button class="btn btn-primary btn-block" id="tx-save">Сохранить</button>
+        `, () => {
+          document.getElementById("tx-save").addEventListener("click", () => {
+            const amount = +document.getElementById("tx-amount").value;
+            if (!amount) { Toast.show("Введи сумму", "danger"); return; }
+            const l = Store.get("economy_tx", []);
+            l.push({
+              id: Utils.uid(), type,
+              category: document.getElementById("tx-cat").value,
+              amount,
+              date: document.getElementById("tx-date").value,
+              note: document.getElementById("tx-note").value.trim()
+            });
+            Store.set("economy_tx", l);
+            Modal.close();
+            Toast.show("Записано", "success");
+            this.renderTab();
+          });
+        });
+      },
+
+      renderMonetize(c) {
+        const channels = [
+          { icon:"📱", name:"Авито", desc:"Комиссия 0% при самовывозе." },
+          { icon:"📷", name:"Instagram / ВК", desc:"Веди блог — клиенты придут." },
+          { icon:"🛒", name:"Местные группы", desc:"«Барахолка [город]»." },
+          { icon:"🏪", name:"Магазины/кафе", desc:"Стабильный сбыт." },
+          { icon:"🚗", name:"Ярмарки", desc:"Живой контакт, цена выше." },
+          { icon:"🤝", name:"Соседи", desc:"Сарафанное радио." }
+        ];
+        c.innerHTML = `
+          <div class="card success"><div class="card-title">💵 Куда продать</div><p class="text-sm">Начни с 1–2 каналов.</p></div>
+          ${channels.map(ch => `
+            <div class="accordion">
+              <div class="accordion-head">${ch.icon} ${Utils.escape(ch.name)} <span class="arrow">▶</span></div>
+              <div class="accordion-body"><p>${Utils.escape(ch.desc)}</p></div>
+            </div>
+          `).join("")}
+        `;
+        c.querySelectorAll(".accordion").forEach(acc => {
+          const head = acc.querySelector(".accordion-head");
+          head.addEventListener("click", () => acc.classList.toggle("open"));
+        });
+      }
+    };
+    Registry.register("finance", "Финансы", "💰", () => window.Finance.render());
+    console.log("✅ Финансы пересозданы и зарегистрированы");
+  }
+
+  // ============================================================
+  // 3. ДЕДЛАЙНЫ — если не зарегистрированы
+  // ============================================================
+  if (!window.Deadlines || !Registry.modules["deadlines"]) {
+    console.log("⚠ Пересоздаю Дедлайны...");
+    window.Deadlines = {
+      autoEvents: [
+        { id:"potato",    icon:"🥔", title:"Посадка картофеля",  month:5,  day:1,  category:"garden" },
+        { id:"tomato",    icon:"🍅", title:"Рассада томатов",    month:5,  day:15, category:"garden" },
+        { id:"cucumber",  icon:"🥒", title:"Огурцы в грунт",     month:6,  day:1,  category:"garden" },
+        { id:"garlic",    icon:"🧄", title:"Озимый чеснок",      month:10, day:15, category:"garden" },
+        { id:"bee-start", icon:"🐝", title:"Ревизия пасеки",     month:3,  day:20, category:"bees" },
+        { id:"bee-honey", icon:"🍯", title:"Первый медосбор",    month:6,  day:20, category:"bees" },
+        { id:"bee-treat", icon:"💊", title:"Обработка от варроа", month:8, day:15, category:"bees" },
+        { id:"vet-spring",icon:"💉", title:"Весенняя вакцинация", month:3, day:15, category:"livestock" },
+        { id:"vet-autumn",icon:"💉", title:"Осенняя вакцинация",  month:9, day:15, category:"livestock" },
+        { id:"fire",      icon:"🧯", title:"Проверка огнетушителей",month:4,day:1, category:"home" },
+        { id:"chimney",   icon:"🔥", title:"Чистка дымохода",    month:9,  day:1,  category:"home" },
+        { id:"wood",      icon:"🪵", title:"Заготовка дров",     month:5,  day:1,  category:"season" }
+      ],
+      getAll() {
+        const today = new Date();
+        const thisYear = today.getFullYear();
+        const customs = Store.get("deadlines_custom", []);
+        const events = [];
+        this.autoEvents.forEach(ev => {
+          [thisYear, thisYear + 1].forEach(y => {
+            const date = new Date(y, ev.month - 1, ev.day);
+            const iso = date.toISOString().slice(0, 10);
+            const days = Utils.daysUntil(iso);
+            if (days >= -30) events.push({ ...ev, date: iso, isCustom: false });
+          });
+        });
+        customs.forEach(c => events.push({ ...c, isCustom: true }));
+        events.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        return events;
+      },
+      getUpcoming(days = 30) {
+        return this.getAll().filter(e => {
+          const d = Utils.daysUntil(e.date);
+          return d >= 0 && d <= days;
+        });
+      },
+      render() {
+        const c = document.getElementById("deadlines-content");
+        if (!c) return;
+        const events = this.getAll();
+        const upcoming14 = events.filter(e => { const d = Utils.daysUntil(e.date); return d >= 0 && d <= 14; });
+        c.innerHTML = `
+          <div class="card success">
+            <div class="card-title">⏳ Ближайшие 14 дней (${upcoming14.length})</div>
+            ${upcoming14.length ? upcoming14.map(e => this.renderEvent(e)).join("") : `<div class="text-muted text-sm">Ничего срочного</div>`}
+          </div>
+          <div class="card">
+            <div class="card-title">📅 Все события</div>
+            ${events.slice(0, 30).map(e => this.renderEvent(e)).join("")}
+          </div>
+          <div class="card">
+            <div class="card-title">➕ Добавить</div>
+            <div class="field"><label>Что</label><input id="cd-title"></div>
+            <div class="field"><label>Иконка</label><input id="cd-icon" value="📌" maxlength="4"></div>
+            <div class="field"><label>Дата</label><input type="date" id="cd-date" value="${Utils.todayISO()}"></div>
+            <button class="btn btn-primary btn-block" id="cd-save">Сохранить</button>
+          </div>
+        `;
+        document.getElementById("cd-save").addEventListener("click", () => {
+          const title = document.getElementById("cd-title").value.trim();
+          const date = document.getElementById("cd-date").value;
+          if (!title || !date) { Toast.show("Заполни", "danger"); return; }
+          const cs = Store.get("deadlines_custom", []);
+          cs.push({ id: Utils.uid(), title, icon: document.getElementById("cd-icon").value || "📌", date });
+          Store.set("deadlines_custom", cs);
+          Toast.show("Добавлено", "success");
+          this.render();
+        });
+        c.querySelectorAll("[data-dead-del]").forEach(b => {
+          b.addEventListener("click", () => {
+            if (!confirm("Удалить?")) return;
+            Store.set("deadlines_custom", Store.get("deadlines_custom", []).filter(x => x.id !== b.dataset.deadDel));
+            this.render();
+          });
+        });
+      },
+      renderEvent(e) {
+        const days = Utils.daysUntil(e.date);
+        const cls = days <= 1 ? "badge-danger" : days <= 5 ? "badge-warn" : "badge-info";
+        const label = days === 0 ? "сегодня" : days === 1 ? "завтра" : days + " " + Utils.plural(days, "день", "дня", "дней");
+        return `
+          <div class="list-item">
+            <span class="li-icon">${e.icon || "📅"}</span>
+            <div class="li-body">
+              <div class="li-title">${Utils.escape(e.title)}</div>
+              <div class="li-sub">${Utils.fmtDate(e.date)}</div>
+            </div>
+            <span class="badge ${cls}">${label}</span>
+            ${e.isCustom ? `<button class="li-btn" data-dead-del="${e.id}">🗑</button>` : ""}
+          </div>
+        `;
+      }
+    };
+    Registry.register("deadlines", "Дедлайны", "⏳", () => window.Deadlines.render());
+    console.log("✅ Дедлайны пересозданы и зарегистрированы");
+  }
+
+  // ============================================================
+  // 4. ПРОВЕРКА ЧЕРЕЗ 1 СЕКУНДУ
+  // ============================================================
+  setTimeout(() => {
+    const allModules = [
+      "advisor","finance","deadlines","garden","mushrooms","bees","livestock","pets",
+      "build","eng","cellar","process","inventory","medicine","resources","crafts",
+      "family","photos","maintenance","mistakes","school","smart","market","coop",
+      "time","map","weather","calendar","knowledge","emergency","search","settings"
+    ];
+    const registered = Object.keys(Registry.modules);
+    const missing = allModules.filter(m => !registered.includes(m));
+    console.log("📦 Зарегистрировано:", registered.length, "/", allModules.length);
+    if (missing.length) {
+      console.error("❌ Всё ещё не зарегистрированы:", missing);
+      if (window.Toast) Toast.show("Не загрузились: " + missing.join(", "), "danger");
+    } else {
+      console.log("✅ Все модули зарегистрированы!");
+      if (window.Toast) Toast.show("Все модули загружены ✅", "success");
+    }
+  }, 1000);
+
+  console.log("✅ Фикс регистрации применён");
+})();
+</script>
 </body>
 </html>
